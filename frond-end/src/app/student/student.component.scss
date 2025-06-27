@@ -1,0 +1,728 @@
+.dashboard-container {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: 250px;
+  background-color: #2c3e50;
+  color: white;
+  padding: 20px 0;
+
+  .profile-section {
+    text-align: center;
+    padding: 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+
+    .avatar {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background-color: #3498db;
+      margin: 0 auto 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      .initials {
+        font-size: 32px;
+        font-weight: bold;
+      }
+    }
+
+    h3 {
+      margin: 0;
+      font-size: 18px;
+    }
+  }
+
+  .nav-menu {
+    padding: 20px 0;
+
+    a {
+      display: flex;
+      align-items: center;
+      padding: 12px 25px;
+      color: white;
+      text-decoration: none;
+      cursor: pointer;
+      transition: background-color 0.3s;
+
+      i {
+        margin-right: 10px;
+      }
+
+      &:hover, &.active {
+        background-color: #34495e;
+      }
+    }
+  }
+}
+
+.main-content {
+  flex: 1;
+  background-color: #f5f6fa;
+  padding: 20px;
+
+  .top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+
+    .logout-btn {
+      background-color: #e74c3c;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+
+      &:hover {
+        background-color: #c0392b;
+      }
+    }
+  }
+
+  .content-section {
+    background-color: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+
+    h3 {
+      margin-top: 0;
+      margin-bottom: 20px;
+      color: #2c3e50;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+
+      label {
+        display: block;
+        margin-bottom: 5px;
+        color: #34495e;
+      }
+
+      input {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+
+        &:focus {
+          outline: none;
+          border-color: #3498db;
+        }
+      }
+    }
+
+    button {
+      background-color: #3498db;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+
+      &:hover {
+        background-color: #2980b9;
+      }
+
+      &:disabled {
+        background-color: #bdc3c7;
+        cursor: not-allowed;
+      }
+    }
+  }
+}
+
+.lessons-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.lesson-card {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+
+  h4 {
+    margin: 0 0 15px 0;
+    color: #333;
+  }
+}
+
+.chapter {
+  margin: 15px 0;
+  padding-left: 15px;
+  border-left: 2px solid #eee;
+
+  h5 {
+    margin: 0 0 10px 0;
+    color: #666;
+  }
+}
+
+.material {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  margin: 5px 0;
+
+  .view-btn {
+    padding: 4px 8px;
+    background: #007bff;
+    color: white;
+    border-radius: 4px;
+    text-decoration: none;
+    font-size: 0.9em;
+
+    &:hover {
+      background: #0056b3;
+    }
+
+    i {
+      margin-right: 5px;
+    }
+  }
+}
+
+/* Homework Section Styles */
+.homework-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.homework-card {
+  background-color: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s;
+}
+
+.homework-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.homework-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+}
+
+.homework-header h4 {
+  margin: 0;
+  color: #333;
+  font-size: 18px;
+}
+
+.due-date {
+  font-size: 14px;
+  color: #666;
+}
+
+.homework-content {
+  margin-bottom: 15px;
+  color: #555;
+  line-height: 1.5;
+}
+
+.homework-footer {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  color: #777;
+}
+
+.overdue {
+  color: #e53935;
+  font-weight: bold;
+}
+
+.no-homework {
+  padding: 30px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  text-align: center;
+  color: #666;
+}
+
+/* Add these styles for homework submission */
+.submission-form {
+  margin-top: 15px;
+  padding: 15px;
+  background-color: #f5f5f5;
+  border-radius: 6px;
+}
+
+.submission-form h5 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  color: #333;
+}
+
+.file-upload {
+  margin-bottom: 15px;
+}
+
+.file-input {
+  display: none;
+}
+
+.file-label {
+  display: inline-block;
+  padding: 8px 16px;
+  background-color: #e0e0e0;
+  color: #333;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.file-label:hover {
+  background-color: #d0d0d0;
+}
+
+.file-label i {
+  margin-right: 8px;
+}
+
+.submit-btn {
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.submit-btn:hover {
+  background-color: #45a049;
+}
+
+.submit-btn:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+.submission-status {
+  margin-top: 15px;
+  padding: 15px;
+  background-color: #e8f5e9;
+  border-radius: 6px;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.status-badge.submitted {
+  background-color: #4caf50;
+  color: white;
+}
+
+.view-btn {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 6px 12px;
+  background-color: #2196f3;
+  color: white;
+  text-decoration: none;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.view-btn:hover {
+  background-color: #0b7dda;
+}
+
+.notification-section {
+  position: relative;
+  display: inline-block;
+}
+
+.notification-btn {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 5px;
+  cursor: pointer;
+  position: relative;
+}
+
+.notification-badge {
+  background: #dc3545;
+  color: white;
+  border-radius: 50%;
+  padding: 2px 6px;
+  font-size: 12px;
+  position: absolute;
+  top: -5px;
+  right: -5px;
+}
+
+// Add these styles at the end of your existing SCSS file
+
+// Notification Wrapper
+.notification-wrapper {
+  position: relative;
+  margin-right: 20px;
+}
+
+// Modern Notification Bell
+.notification-bell {
+  position: relative;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  i {
+    color: white;
+    font-size: 18px;
+    transition: transform 0.3s ease;
+  }
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+    
+    i {
+      transform: scale(1.1);
+    }
+  }
+  
+  &.has-notifications {
+    animation: bellShake 2s infinite;
+  }
+}
+
+// Notification Count Badge
+.notification-count {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+  color: white;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  border: 2px solid white;
+  box-shadow: 0 2px 8px rgba(255, 107, 107, 0.4);
+}
+
+// Notification Pulse Animation
+.notification-pulse {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ff6b6b;
+  animation: pulse 2s infinite;
+}
+
+// Modern Dropdown
+.notification-dropdown {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1), 0 8px 16px rgba(0, 0, 0, 0.08);
+  width: 380px;
+  max-height: 500px;
+  overflow: hidden;
+  z-index: 1000;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: -8px;
+    right: 20px;
+    width: 16px;
+    height: 16px;
+    background: white;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    border-bottom: none;
+    border-right: none;
+    transform: rotate(45deg);
+  }
+}
+
+// Dropdown Header
+.notification-header {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid #f0f0f0;
+  background: linear-gradient(135deg, #f8f9ff 0%, #f0f2ff 100%);
+  
+  h4 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #2d3748;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    
+    i {
+      color: #667eea;
+    }
+  }
+  
+  .notification-count-text {
+    font-size: 14px;
+    color: #718096;
+    margin-top: 4px;
+    display: block;
+  }
+}
+
+// Notification List
+.notification-list {
+  max-height: 320px;
+  overflow-y: auto;
+  
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: #f7fafc;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: #cbd5e0;
+    border-radius: 3px;
+  }
+}
+
+// Individual Notification Item
+.notification-item {
+  display: flex;
+  align-items: flex-start;
+  padding: 16px 24px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid #f7fafc;
+  position: relative;
+  
+  &:hover {
+    background: linear-gradient(135deg, #f8f9ff 0%, #f0f2ff 100%);
+    transform: translateX(4px);
+  }
+  
+  &.unread {
+    background: linear-gradient(135deg, #e6f3ff 0%, #f0f8ff 100%);
+    border-left: 4px solid #667eea;
+    
+    &:hover {
+      background: linear-gradient(135deg, #dbeafe 0%, #e6f3ff 100%);
+    }
+  }
+  
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+// Notification Icon
+.notification-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 16px;
+  flex-shrink: 0;
+  
+  i {
+    color: white;
+    font-size: 16px;
+  }
+}
+
+// Notification Content
+.notification-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.notification-title {
+  font-weight: 600;
+  font-size: 15px;
+  color: #2d3748;
+  margin-bottom: 4px;
+  line-height: 1.4;
+}
+
+.notification-message {
+  font-size: 14px;
+  color: #4a5568;
+  margin-bottom: 8px;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.notification-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: #718096;
+  
+  .notification-course {
+    font-weight: 500;
+    color: #667eea;
+  }
+  
+  .notification-time {
+    white-space: nowrap;
+  }
+}
+
+// Unread Status
+.notification-status {
+  display: flex;
+  align-items: center;
+  margin-left: 12px;
+}
+
+.unread-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #667eea;
+  animation: pulse 2s infinite;
+}
+
+// Empty State
+.notification-empty {
+  text-align: center;
+  padding: 40px 24px;
+  color: #718096;
+  
+  i {
+    font-size: 48px;
+    color: #cbd5e0;
+    margin-bottom: 16px;
+  }
+  
+  p {
+    font-size: 16px;
+    font-weight: 500;
+    margin: 0 0 8px;
+    color: #4a5568;
+  }
+  
+  span {
+    font-size: 14px;
+    color: #718096;
+  }
+}
+
+// Footer
+.notification-footer {
+  padding: 16px 24px;
+  border-top: 1px solid #f0f0f0;
+  background: #f8f9fa;
+}
+
+.mark-all-read-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  }
+}
+
+// Animations
+@keyframes bellShake {
+  0%, 50%, 100% { transform: rotate(0deg); }
+  10%, 30% { transform: rotate(-10deg); }
+  20%, 40% { transform: rotate(10deg); }
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+// Responsive Design
+@media (max-width: 768px) {
+  .notification-dropdown {
+    width: 320px;
+    right: -20px;
+  }
+  
+  .notification-item {
+    padding: 12px 16px;
+  }
+  
+  .notification-header {
+    padding: 16px 20px 12px;
+  }
+}

@@ -1,0 +1,148 @@
+<div class="messaging-container">
+  <!-- Sidebar with conversations -->
+  <div class="conversations-sidebar">
+    <div class="sidebar-header">
+      <div class="header-top">
+        <button class="btn btn-back" (click)="goBackToDashboard()" title="Back to Dashboard">
+          <i class="fas fa-arrow-left"></i>
+        </button>
+        <h3>Messages</h3>
+      </div>
+      <button class="btn btn-primary btn-sm" (click)="startNewConversation()">
+        <i class="fas fa-plus"></i> New
+      </button>
+    </div>
+    
+    <div class="conversations-list">
+      <div 
+        *ngFor="let conversation of conversations" 
+        class="conversation-item"
+        [class.active]="selectedConversation?.id === conversation.id"
+        (click)="selectConversation(conversation)"
+      >
+        <div class="conversation-info">
+          <div class="conversation-name">{{ getConversationPartnerName(conversation) }}</div>
+          <div class="last-message">{{ conversation.last_message_content }}</div>
+        </div>
+        <div class="conversation-meta">
+          <div class="time">{{ formatTime(conversation.last_message_time) }}</div>
+          <div *ngIf="conversation.unread_count > 0" class="unread-badge">
+            {{ conversation.unread_count }}
+          </div>
+        </div>
+      </div>
+      
+      <div *ngIf="conversations.length === 0" class="no-conversations">
+        No conversations yet. Start a new one!
+      </div>
+    </div>
+  </div>
+
+  <!-- Main chat area -->
+  <div class="chat-area">
+    <!-- New conversation form -->
+    <div *ngIf="showNewConversation" class="new-conversation">
+      <div class="chat-header">
+        <h4>New Conversation</h4>
+        <button class="btn btn-sm btn-secondary" (click)="showNewConversation = false">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      
+      <div class="recipient-search">
+        <div class="form-group">
+          <label>Search for recipient:</label>
+          <input 
+            type="text" 
+            class="form-control" 
+            [(ngModel)]="searchQuery" 
+            (input)="searchUsers()"
+            placeholder="Type name or username..."
+          >
+        </div>
+        
+        <div *ngIf="searchResults.length > 0" class="search-results">
+          <div 
+            *ngFor="let user of searchResults" 
+            class="search-result-item"
+            (click)="selectRecipient(user)"
+          >
+            <div class="user-info">
+              <strong>{{ user.username }}</strong>
+              <span class="user-type">{{ user.type }}</span>
+              <span *ngIf="user.class_name" class="user-class">{{ user.class_name }}</span>
+            </div>
+          </div>
+        </div>
+        
+        <div *ngIf="selectedRecipient" class="selected-recipient">
+          <strong>To: {{ selectedRecipient.username }}</strong> ({{ selectedRecipient.type }})
+        </div>
+      </div>
+    </div>
+
+    <!-- Existing conversation -->
+    <div *ngIf="selectedConversation && !showNewConversation" class="conversation-header">
+      <h4>{{ getConversationPartnerName(selectedConversation) }}</h4>
+    </div>
+
+    <!-- Messages area -->
+    <div 
+      *ngIf="(selectedConversation && !showNewConversation) || (showNewConversation && selectedRecipient)" 
+      class="messages-container" 
+      #messagesContainer
+    >
+      <div *ngFor="let message of messages" class="message" [class.own]="isSender(message)">
+        <div class="message-content">
+          <div class="message-text">{{ message.content }}</div>
+          <div class="message-meta">
+            <span class="sender">{{ isSender(message) ? 'You' : message.sender_name }}</span>
+            <span class="time">{{ formatTime(message.created_at) }}</span>
+            <span *ngIf="isSender(message) && message.is_read" class="read-status">
+              <i class="fas fa-check-double text-primary"></i>
+            </span>
+          </div>
+        </div>
+      </div>
+      
+      <div *ngIf="messages.length === 0" class="no-messages">
+        No messages yet. Start the conversation!
+      </div>
+    </div>
+
+    <!-- Message input -->
+    <div 
+      *ngIf="(selectedConversation && !showNewConversation) || (showNewConversation && selectedRecipient)" 
+      class="message-input-area"
+    >
+      <div class="input-group">
+        <textarea 
+          #messageInput
+          class="form-control" 
+          [(ngModel)]="messageContent" 
+          (keypress)="onKeyPress($event)"
+          placeholder="Type your message..."
+          rows="2"
+        ></textarea>
+        <div class="input-group-append">
+          <button 
+            class="btn btn-primary" 
+            (click)="sendMessage()"
+            [disabled]="!messageContent.trim()"
+          >
+            <i class="fas fa-paper-plane"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Welcome message -->
+    <div *ngIf="!selectedConversation && !showNewConversation" class="welcome-message">
+      <div class="text-center">
+        <i class="fas fa-comments fa-3x text-muted mb-3"></i>
+        <h4>Welcome to Messages</h4>
+        <p class="text-muted">Select a conversation or start a new one to begin messaging.</p>
+      </div>
+    </div>
+  </div>
+</div>

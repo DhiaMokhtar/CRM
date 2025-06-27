@@ -1,0 +1,228 @@
+<div class="calendar-container">
+  <!-- Header -->
+  <div class="calendar-header">
+    <button class="back-btn" (click)="goBackToDashboard()">
+      <i class="fas fa-arrow-left"></i> Back to Dashboard
+    </button>
+    <h2>Course Schedule</h2>
+    <div class="header-controls">
+      <div class="view-switcher">
+        <button 
+          [class.active]="currentView === 'week'"
+          (click)="switchView('week')">
+          Week
+        </button>
+        <button 
+          [class.active]="currentView === 'month'"
+          (click)="switchView('month')">
+          Month
+        </button>
+      </div>
+      <button 
+        *ngIf="isAdmin" 
+        class="add-schedule-btn"
+        (click)="openAddScheduleModal()">
+        <i class="fas fa-plus"></i> Add Schedule
+      </button>
+    </div>
+  </div>
+
+  <!-- Navigation -->
+  <div class="calendar-navigation">
+    <button (click)="previousPeriod()">
+      <i class="fas fa-chevron-left"></i>
+    </button>
+    <h3>
+      {{ currentView === 'month' ? 
+         (currentDate | date:'MMMM yyyy') : 
+         ('Week of ' + (currentDate | date:'MMM d, yyyy')) }}
+    </h3>
+    <button (click)="nextPeriod()">
+      <i class="fas fa-chevron-right"></i>
+    </button>
+  </div>
+
+  <!-- Schedule List -->
+  <div class="schedule-list">
+    <div 
+      *ngFor="let schedule of schedules" 
+      class="schedule-item"
+      [class]="'schedule-' + schedule.schedule_type">
+      <div class="schedule-time">
+        <div class="date">{{ formatDate(schedule.start_datetime) }}</div>
+        <div class="time">
+          {{ formatTime(schedule.start_datetime) }} - {{ formatTime(schedule.end_datetime) }}
+        </div>
+      </div>
+      <div class="schedule-details">
+        <h4>{{ schedule.title }}</h4>
+        <p class="description" *ngIf="schedule.description">{{ schedule.description }}</p>
+        <div class="schedule-meta">
+          <span class="classroom">
+            <i class="fas fa-door-open"></i> {{ schedule.classroom_name }}
+          </span>
+          <span class="teacher" *ngIf="schedule.teacher_name">
+            <i class="fas fa-user"></i> {{ schedule.teacher_name }}
+          </span>
+          <span class="lesson" *ngIf="schedule.lesson_title">
+            <i class="fas fa-book"></i> {{ schedule.lesson_title }}
+          </span>
+          <span class="type" [class]="'type-' + schedule.schedule_type">
+            {{ schedule.schedule_type | titlecase }}
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    <div *ngIf="schedules.length === 0" class="no-schedules">
+      <i class="fas fa-calendar-alt"></i>
+      <p>No schedules found for this period.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Add Schedule Modal -->
+<div *ngIf="showAddScheduleModal" class="modal-overlay" (click)="closeAddScheduleModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Add New Schedule</h3>
+      <button class="close-btn" (click)="closeAddScheduleModal()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    
+    <form (ngSubmit)="addSchedule()" class="schedule-form">
+      <div class="form-group">
+        <label for="title">Title *</label>
+        <input 
+          type="text" 
+          id="title" 
+          [(ngModel)]="newSchedule.title" 
+          name="title" 
+          required>
+      </div>
+      
+      <div class="form-group">
+        <label for="description">Description</label>
+        <textarea 
+          id="description" 
+          [(ngModel)]="newSchedule.description" 
+          name="description"
+          rows="3">
+        </textarea>
+      </div>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label for="schedule_type">Type *</label>
+          <select 
+            id="schedule_type" 
+            [(ngModel)]="newSchedule.schedule_type" 
+            name="schedule_type" 
+            required>
+            <option value="class">Class</option>
+            <option value="exam">Exam</option>
+            <option value="event">Event</option>
+            <option value="meeting">Meeting</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label for="classroom">Classroom *</label>
+          <select 
+            id="classroom" 
+            [(ngModel)]="newSchedule.classroom" 
+            name="classroom" 
+            required>
+            <option value="">Select Classroom</option>
+            <option *ngFor="let classroom of classrooms" [value]="classroom.id">
+              {{ classroom.name }}
+            </option>
+          </select>
+        </div>
+      </div>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label for="teacher">Teacher</label>
+          <select 
+            id="teacher" 
+            [(ngModel)]="newSchedule.teacher" 
+            name="teacher">
+            <option value="">Select Teacher</option>
+            <option *ngFor="let teacher of teachers" [value]="teacher.id">
+              {{ teacher.username }}
+            </option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label for="lesson">Lesson</label>
+          <select 
+            id="lesson" 
+            [(ngModel)]="newSchedule.lesson" 
+            name="lesson">
+            <option value="">Select Lesson</option>
+            <option *ngFor="let lesson of lessons" [value]="lesson.id">
+              {{ lesson.title }}
+            </option>
+          </select>
+        </div>
+      </div>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label for="start_datetime">Start Date & Time *</label>
+          <input 
+            type="datetime-local" 
+            id="start_datetime" 
+            [(ngModel)]="newSchedule.start_datetime" 
+            name="start_datetime" 
+            required>
+        </div>
+        
+        <div class="form-group">
+          <label for="end_datetime">End Date & Time *</label>
+          <input 
+            type="datetime-local" 
+            id="end_datetime" 
+            [(ngModel)]="newSchedule.end_datetime" 
+            name="end_datetime" 
+            required>
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label class="checkbox-label">
+          <input 
+            type="checkbox" 
+            [(ngModel)]="newSchedule.is_recurring" 
+            name="is_recurring">
+          Recurring Schedule
+        </label>
+      </div>
+      
+      <div *ngIf="newSchedule.is_recurring" class="form-group">
+        <label for="recurrence_pattern">Recurrence Pattern</label>
+        <select 
+          id="recurrence_pattern" 
+          [(ngModel)]="newSchedule.recurrence_pattern" 
+          name="recurrence_pattern">
+          <option value="">Select Pattern</option>
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+          <option value="monthly">Monthly</option>
+        </select>
+      </div>
+      
+      <div class="form-actions">
+        <button type="button" class="cancel-btn" (click)="closeAddScheduleModal()">
+          Cancel
+        </button>
+        <button type="submit" class="submit-btn">
+          Add Schedule
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

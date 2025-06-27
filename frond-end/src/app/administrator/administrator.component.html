@@ -1,0 +1,385 @@
+<div class="admin-container">
+  <nav class="top-bar">
+    <button [class.active]="activeSection === 'addTeacher'" (click)="setActiveSection('addTeacher')">
+      Add Teacher
+    </button>
+    <button [class.active]="activeSection === 'addStudent'" (click)="setActiveSection('addStudent')">
+      Add Student
+    </button>
+    <button [class.active]="activeSection === 'addParent'" (click)="setActiveSection('addParent')">
+      Add Parent
+    </button>
+    <button [class.active]="activeSection === 'listTeachers'" (click)="setActiveSection('listTeachers')">
+      List Teachers
+    </button>
+    <button [class.active]="activeSection === 'listStudents'" (click)="setActiveSection('listStudents')">
+      List Students
+    </button>
+    <button [class.active]="activeSection === 'listParents'" (click)="setActiveSection('listParents')">
+      List Parents
+    </button>
+    <button [class.active]="activeSection === 'grading'" (click)="setActiveSection('grading')">
+      Grading
+    </button>
+    <button (click)="logout()" class="logout-btn">Logout</button>
+  </nav>
+
+  <!-- Error Message Display -->
+  <div *ngIf="errorMessage" class="error-message">
+    {{ errorMessage }}
+  </div>
+
+  <!-- Content Sections -->
+  <div class="content-section">
+    <!-- Add Teacher Form -->
+    <div *ngIf="activeSection === 'addTeacher'" class="form-section">
+      <h2>Add New Teacher</h2>
+      <form [formGroup]="teacherForm" (ngSubmit)="addTeacher()">
+        <div class="form-group">
+          <label for="teacherUsername">Username:</label>
+          <input id="teacherUsername" type="text" formControlName="username">
+        </div>
+        <div class="form-group">
+          <label for="teacherPassword">Password:</label>
+          <input id="teacherPassword" type="password" formControlName="password">
+        </div>
+        <div class="form-group">
+          <label for="teacherEmail">Email:</label>
+          <input id="teacherEmail" type="email" formControlName="email">
+        </div>
+        <div class="form-group">
+          <label for="teacherClasses">Classes:</label>
+          <select id="teacherClasses" multiple formControlName="class_ids">
+            <option *ngFor="let class of classes" [value]="class.id">{{ class.name }}</option>
+          </select>
+        </div>
+        <button type="submit" [disabled]="!teacherForm.valid">Add Teacher</button>
+      </form>
+    </div>
+
+    <!-- Add Student Form -->
+    <div *ngIf="activeSection === 'addStudent'" class="form-section">
+      <h2>Add New Student</h2>
+      <form [formGroup]="studentForm" (ngSubmit)="addStudent()">
+        <div class="form-group">
+          <label for="studentUsername">Username:</label>
+          <input id="studentUsername" type="text" formControlName="username">
+        </div>
+        <div class="form-group">
+          <label for="studentPassword">Password:</label>
+          <input id="studentPassword" type="password" formControlName="password">
+        </div>
+        <div class="form-group">
+          <label for="studentEmail">Email:</label>
+          <input id="studentEmail" type="email" formControlName="email">
+        </div>
+        <div class="form-group">
+          <label for="studentClass">Class:</label>
+          <select id="studentClass" formControlName="class_id">
+            <option value="">Select a class</option>
+            <option *ngFor="let class of classes" [value]="class.id">{{ class.name }}</option>
+          </select>
+        </div>
+        <button type="submit" [disabled]="!studentForm.valid">Add Student</button>
+      </form>
+    </div>
+
+    <!-- List Teachers -->
+    <div *ngIf="activeSection === 'listTeachers'" class="list-section">
+      <h2>Teachers List</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Username</th>
+            <th>Email</th>
+            <th>Classes</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let teacher of teachers">
+            <td>{{ teacher.username }}</td>
+            <td>{{ teacher.email }}</td>
+            <td>{{ teacher.class_ids?.join(', ') }}</td>
+            <td>
+              <button class="edit-btn" (click)="editTeacher(teacher)">Edit</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Edit Teacher Form -->
+    <div *ngIf="activeSection === 'editTeacher'" class="form-section">
+      <h2>Edit Teacher</h2>
+      <form [formGroup]="teacherForm" (ngSubmit)="updateTeacher()">
+        <div class="form-group">
+          <label for="teacherUsername">Username:</label>
+          <input id="teacherUsername" type="text" formControlName="username">
+        </div>
+        <div class="form-group">
+          <label for="teacherPassword">Password:</label>
+          <input id="teacherPassword" type="password" formControlName="password">
+        </div>
+        <div class="form-group">
+          <label for="teacherEmail">Email:</label>
+          <input id="teacherEmail" type="email" formControlName="email">
+        </div>
+        <div class="form-group">
+          <label for="teacherClasses">Classes:</label>
+          <select id="teacherClasses" multiple formControlName="class_ids">
+            <option *ngFor="let class of classes" [value]="class.id">{{ class.name }}</option>
+          </select>
+        </div>
+        <div class="button-group">
+          <button type="submit" [disabled]="!teacherForm.valid">Save Changes</button>
+          <button type="button" (click)="setActiveSection('listTeachers')">Cancel</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- List Students -->
+    <div *ngIf="activeSection === 'listStudents'" class="list-section">
+      <h2>Students List</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Username</th>
+            <th>Email</th>
+            <th>Class</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let student of students">
+            <td>{{ student.username }}</td>
+            <td>{{ student.email }}</td>
+            <td>{{ student.class_id }}</td>
+            <td>
+              <button class="edit-btn" (click)="editStudent(student)">Edit</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Edit Student Form -->
+    <div *ngIf="activeSection === 'editStudent'" class="form-section">
+      <h2>Edit Student</h2>
+      <form [formGroup]="studentForm" (ngSubmit)="updateStudent()">
+        <div class="form-group">
+          <label for="studentUsername">Username:</label>
+          <input id="studentUsername" type="text" formControlName="username">
+        </div>
+        <div class="form-group">
+          <label for="studentPassword">Password:</label>
+          <input id="studentPassword" type="password" formControlName="password">
+        </div>
+        <div class="form-group">
+          <label for="studentEmail">Email:</label>
+          <input id="studentEmail" type="email" formControlName="email">
+        </div>
+        <div class="form-group">
+          <label for="studentClass">Class:</label>
+          <select id="studentClass" formControlName="class_id">
+            <option value="">Select a class</option>
+            <option *ngFor="let class of classes" [value]="class.id">{{ class.name }}</option>
+          </select>
+        </div>
+        <div class="button-group">
+          <button type="submit" [disabled]="!studentForm.valid">Save Changes</button>
+          <button type="button" (click)="setActiveSection('listStudents')">Cancel</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Add Parent Form -->
+    <div *ngIf="activeSection === 'addParent'" class="form-section">
+      <h2>Add New Parent</h2>
+      <form [formGroup]="parentForm" (ngSubmit)="addParent()">
+        <div class="form-group">
+          <label for="parentUsername">Username:</label>
+          <input id="parentUsername" type="text" formControlName="username">
+        </div>
+        <div class="form-group">
+          <label for="parentPassword">Password:</label>
+          <input id="parentPassword" type="password" formControlName="password">
+        </div>
+        <div class="form-group">
+          <label for="parentEmail">Email:</label>
+          <input id="parentEmail" type="email" formControlName="email">
+        </div>
+        <button type="submit" [disabled]="!parentForm.valid">Add Parent</button>
+      </form>
+    </div>
+
+    <!-- List Parents -->
+    <div *ngIf="activeSection === 'listParents'" class="list-section">
+      <h2>Parents List</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Username</th>
+            <th>Email</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let parent of parents">
+            <td>{{parent.username}}</td>
+            <td>{{parent.email}}</td>
+            <td>
+              <button class="edit-btn" (click)="editParent(parent)">Edit</button>
+              <button class="action-btn delete" (click)="deleteParent(parent.id)">Delete</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Edit Parent Form -->
+    <div *ngIf="activeSection === 'editParent'" class="form-section">
+      <h2>Edit Parent</h2>
+      <form [formGroup]="parentForm" (ngSubmit)="updateParent()">
+        <div class="form-group">
+          <label for="editParentUsername">Username:</label>
+          <input id="editParentUsername" type="text" formControlName="username" readonly>
+        </div>
+        <div class="form-group">
+          <label for="editParentEmail">Email:</label>
+          <input id="editParentEmail" type="email" formControlName="email">
+        </div>
+        <div class="form-group">
+          <label for="editParentPassword">New Password:</label>
+          <input id="editParentPassword" type="password" formControlName="password" 
+                 placeholder="Leave blank to keep current password">
+        </div>
+        <div class="form-group">
+          <!-- Replace the student selection section -->
+          <div class="form-group student-select-container">
+            <label>Assign Students</label>
+            <div class="search-box">
+              <input type="text" 
+                     [formControl]="studentSearch" 
+                     placeholder="Search students...">
+              <i class="fas fa-search"></i>
+            </div>
+            
+            <div class="student-select-box">
+              <div class="selected-students" *ngIf="selectedStudents.length > 0">
+                <div class="student-tag" *ngFor="let student of selectedStudents">
+                  {{ student.username }}
+                  <span class="remove-student" (click)="removeStudent(student)">×</span>
+                </div>
+              </div>
+              
+              <div class="student-list">
+                <div class="student-option" 
+                     *ngFor="let student of filteredStudents"
+                     [class.selected]="isSelected(student)"
+                     (click)="toggleStudent(student)">
+                  <div class="student-info">
+                    <span class="student-name">{{ student.username }}</span>
+                    <span class="student-email">{{ student.email }}</span>
+                  </div>
+                  <div class="select-indicator"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="button-group">
+          <button type="submit" [disabled]="!parentForm.valid">Save Changes</button>
+          <button type="button" (click)="setActiveSection('listParents')">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<!-- Add this to the navigation menu -->
+<li>
+  <a routerLink="/calendar" class="nav-link">
+    <i class="fas fa-calendar-alt"></i>
+    <span>Calendar</span>
+  </a>
+</li>
+
+  <!-- Grading Section -->
+  <div *ngIf="activeSection === 'grading'" class="grading-section">
+    <div *ngIf="!isGradingMode" class="class-selection">
+      <h2>Select Class for Grading</h2>
+      <div class="class-grid">
+        <div *ngFor="let class of classes" 
+             class="class-card" 
+             (click)="selectClassForGrading(class)">
+          <h3>{{ class.name }}</h3>
+          <p>Click to manage grades</p>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="isGradingMode && gradeTable" class="grade-management">
+      <div class="grade-header">
+        <button (click)="backToClassSelection()" class="back-btn">← Back to Classes</button>
+        <h2>{{ gradeTable.classroom_name }} - Grade Management</h2>
+      </div>
+
+      <!-- Add Subject Section -->
+      <div class="add-subject-section">
+        <h3>Add New Subject</h3>
+        <div class="add-subject-form">
+          <input 
+            type="text" 
+            [(ngModel)]="newSubjectName" 
+            placeholder="Subject name"
+            class="subject-input">
+          <button (click)="addSubject()" [disabled]="!newSubjectName.trim()">Add Subject</button>
+        </div>
+      </div>
+
+      <!-- Grade Table -->
+      <div class="grade-table-container">
+        <table class="grade-table">
+          <thead>
+            <tr>
+              <th class="student-header">Student</th>
+              <th *ngFor="let subject of gradeTable.subjects" class="subject-header">
+                {{ subject.name }}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let student of gradeTable.students">
+              <td class="student-name">{{ student.username }}</td>
+              <td *ngFor="let subject of gradeTable.subjects" class="grade-cell">
+                <div *ngIf="!isEditingGrade(student.id, subject.id)" class="grade-display">
+                  <span class="grade-score">
+                    {{ getGradeForStudent(student.id, subject.id)?.score || '-' }}
+                  </span>
+                  <button 
+                    (click)="startEditingGrade(student.id, subject.id)"
+                    class="edit-grade-btn">
+                    ✏️
+                  </button>
+                </div>
+                <div *ngIf="isEditingGrade(student.id, subject.id)" class="grade-edit">
+                  <input 
+                    type="number" 
+                    min="0" 
+                    max="100" 
+                    [(ngModel)]="editingGrades[student.id + '-' + subject.id]"
+                    class="grade-input">
+                  <button 
+                    (click)="saveGrade(student.id, subject.id)"
+                    class="save-btn">✓</button>
+                  <button 
+                    (click)="cancelEditingGrade(student.id, subject.id)"
+                    class="cancel-btn">✗</button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>

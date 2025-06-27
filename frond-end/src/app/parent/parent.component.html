@@ -1,0 +1,162 @@
+<div class="dashboard-container">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="profile-section">
+      <div class="avatar">
+        <span class="initials">{{(username || 'P').charAt(0).toUpperCase()}}</span>
+      </div>
+      <h3>{{username}}</h3>
+    </div>
+    <nav class="nav-menu">
+      <a [class.active]="activeSection === 'info'" (click)="setActiveSection('info')">
+        <i class="fas fa-user"></i> My Information
+      </a>
+      <a [class.active]="activeSection === 'children'" (click)="setActiveSection('children')">
+        <i class="fas fa-users"></i> My Children
+      </a>
+      <a class="messages-link" (click)="openMessages()">
+        <i class="fas fa-envelope"></i> Messages
+        <span class="message-badge" *ngIf="unreadMessagesCount > 0">{{unreadMessagesCount}}</span>
+      </a>
+    </nav>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <div class="top-bar">
+      <h2>Parent Dashboard</h2>
+      <button class="logout-btn" (click)="logout()">Logout</button>
+    </div>
+
+    <!-- Info Section -->
+    <div *ngIf="activeSection === 'info'" class="content-section">
+      <h3>My Information</h3>
+      <form [formGroup]="parentForm" (ngSubmit)="updateInfo()">
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" formControlName="username" [readonly]="true">
+          <small class="form-hint">Username cannot be changed</small>
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" formControlName="email">
+          <small class="error" *ngIf="parentForm.get('email')?.errors?.['email'] && parentForm.get('email')?.touched">
+            Please enter a valid email address
+          </small>
+        </div>
+        <div class="form-group">
+          <label>New Password</label>
+          <input type="password" formControlName="password" placeholder="Leave blank to keep current password">
+          <small class="error" *ngIf="parentForm.get('password')?.errors?.['minlength'] && parentForm.get('password')?.touched">
+            Password must be at least 6 characters
+          </small>
+        </div>
+        <button type="submit" [disabled]="!parentForm.valid">Update Information</button>
+      </form>
+    </div>
+
+    <!-- Children Section -->
+    <div *ngIf="activeSection === 'children'" class="content-section">
+      <h3>My Children</h3>
+      <div class="children-list">
+        <div *ngIf="children.length === 0" class="no-children">
+          <i class="fas fa-child"></i>
+          <p>No children registered yet.</p>
+        </div>
+        <div *ngFor="let child of children" class="child-card" (click)="loadChildCourses(child.id)">
+          <div class="student-info">
+            <h4>{{child.username}}</h4>
+            <p>{{child.email}}</p>
+          </div>
+          <div class="class-info">
+            <h5>Class: {{child.class_name}}</h5>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Child Courses Section -->
+    <!-- Inside the Child Courses Section -->
+    <div *ngIf="activeSection === 'childCourses'" class="content-section">
+      <div class="section-header">
+        <button class="back-btn" (click)="setActiveSection('children')">
+          <i class="fas fa-arrow-left"></i> Back to Children
+        </button>
+        <h3>{{selectedChild?.username}}'s Courses</h3>
+      </div>
+      <div class="lessons-container">
+        <div *ngFor="let lesson of childLessons" class="lesson-card">
+          <h4>{{ lesson.title }}</h4>
+          <div class="chapters">
+            <div *ngFor="let chapter of lesson.chapters" class="chapter">
+              <h5>{{ chapter.title }}</h5>
+              <div class="materials">
+                <div *ngFor="let material of chapter.courses" class="material">
+                  <span>{{ material.title }}</span>
+                  <a [href]="'https://localhost:8000' + material.pdf" target="_blank" class="view-btn">
+                    <i class="fas fa-eye"></i> View
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Add this section after the lessons-container -->
+      <div class="comments-section">
+        <h3>Teacher Comments</h3>
+        <div class="comments-list">
+          <div *ngIf="studentComments.length === 0" class="no-comments">
+            No comments yet.
+          </div>
+          <div *ngFor="let comment of studentComments" class="comment-item">
+            <div class="comment-header">
+              <span class="comment-author">{{ comment.teacher_name }}</span>
+              <span class="comment-date">{{ comment.created_at }}</span>
+            </div>
+            <div class="comment-content">{{ comment.content }}</div>
+          </div>
+        </div>
+      <!-- Add homework section after the comments section -->
+      <div class="homework-section">
+        <h3>{{selectedChild?.username}}'s Homework</h3>
+        <div class="homework-container">
+          <div *ngIf="childHomework.length === 0" class="no-homework">
+            <i class="fas fa-tasks"></i>
+            <p>No homework assignments available.</p>
+          </div>
+          <div *ngFor="let homework of childHomework" class="homework-card">
+            <div class="homework-header">
+              <h4>{{ homework.title }}</h4>
+              <span class="due-date" [ngClass]="{'overdue': isOverdue(homework.due_date)}">
+                Due: {{ homework.due_date | date:'medium' }}
+              </span>
+            </div>
+            <div class="homework-content">
+              <p>{{ homework.description }}</p>
+              <div class="homework-footer">
+                <span class="teacher">Assigned by: {{ homework.teacher_name }}</span>
+                <span class="status" [ngClass]="{'submitted': homework.submission, 'overdue': isOverdue(homework.due_date) && !homework.submission}">
+                  {{ homework.submission ? 'Submitted' : (isOverdue(homework.due_date) ? 'Overdue' : 'Pending') }}
+                </span>
+              </div>
+              <div class="submission-status" *ngIf="homework.submission">
+                <div class="submission-info">
+                  <i class="fas fa-check-circle"></i>
+                  <p>Submitted on: {{ homework.submission.submission_date | date:'medium' }}</p>
+                  <a [href]="homework.submission.file" target="_blank" class="view-btn">
+                    <i class="fas fa-eye"></i> View Submission
+                  </a>
+                </div>
+                <div *ngIf="homework.submission.comments" class="submission-comments">
+                  <strong>Comments:</strong> {{ homework.submission.comments }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

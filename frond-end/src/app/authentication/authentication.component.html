@@ -1,0 +1,20 @@
+<form (ngSubmit)="onLogin()" #loginForm="ngForm">
+    <div class="imgcontainer">
+      <img src="../../assets/gard.jpg" alt="Avatar" class="avatar">
+    </div>
+  
+    <div class="container">
+      <label for="uname"><b>Username</b></label>
+      <input type="text" [(ngModel)]="username" name="username" required>
+  
+      <label for="psw"><b>Password</b></label>
+      <input type="password" [(ngModel)]="password" name="password" required>
+  
+      <button type="submit">Login</button>
+      <div class="remember-me">
+        <input type="checkbox" id="rememberMe" [checked]="rememberMe" (click)="onRememberMeChange($event)">
+        <label for="rememberMe">Remember me</label>
+      </div>
+    </div>
+  </form>
+  
