@@ -15,6 +15,7 @@ import { HttpsInterceptor } from './interceptors/https.interceptor';
 import { AuthService } from './services/auth.service';
 import { AuthGuard } from './guards/auth.guard';
 import { CalendarComponent } from './calendar/calendar.component';
+import { ChatbotComponent } from './chatbot/chatbot.component';
 
 @NgModule({
   declarations: [
@@ -26,7 +27,8 @@ import { CalendarComponent } from './calendar/calendar.component';
     TeacherComponent,
     ParentComponent,
     MessagingComponent,
-    CalendarComponent
+    CalendarComponent,
+    ChatbotComponent
   ],
   imports: [
     BrowserModule,

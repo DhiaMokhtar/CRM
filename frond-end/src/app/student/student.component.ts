@@ -22,8 +22,15 @@ interface Notification {
   chapter_title: string;
   lesson_title: string;
 }
-// Add this import at the top
 
+// Add chat interface
+interface ChatMessage {
+  id: string;
+  content: string;
+  isUser: boolean;
+  timestamp: Date;
+  isLoading?: boolean;
+}
 
 // Update the component decorator
 @Component({
@@ -59,6 +66,14 @@ export class StudentComponent implements OnInit {
   unreadNotificationsCount: number = 0;
   showNotifications: boolean = false;
   unreadMessagesCount = 0;
+
+  // Add chat properties
+  chatMessages: any[] = [];
+  currentChatMessage: string = '';
+  isChatLoading: boolean = false;
+  showChat: boolean = false;
+  private chatApiUrl = 'http://localhost:1234/v1/chat/completions/'; // Replace with your actual API endpoint
+
   constructor(
     private fb: FormBuilder,
     private http: HttpClient,
@@ -330,7 +345,98 @@ toggleNotifications() {
   openMessages(): void {
     this.router.navigate(['/messages']);
   }
+
+  // Add chat methods
+  toggleChat(): void {
+    this.showChat = !this.showChat;
+    if (this.showChat && this.chatMessages.length === 0) {
+      this.addChatMessage('Hello! I\'m here to help you with your studies. Feel free to ask me anything!', false);
+    }
+  }
+
+  sendChatMessage(): void {
+    if (!this.currentChatMessage.trim() || this.isChatLoading) {
+      return;
+    }
+
+    // Add user message
+    this.addChatMessage(this.currentChatMessage, true);
+    const userMessage = this.currentChatMessage;
+    this.currentChatMessage = '';
+
+    // Add loading message
+    const loadingMessage = this.addChatMessage('Thinking...', false, true);
+    this.isChatLoading = true;
+
+    // Prepare API payload
+    const payload = {
+      "model": "deepseek/deepseek-r1-0528-qwen3-8b",
+      "messages": [
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": userMessage}
+      ]
+    };
+
+    // Send to API
+    this.http.post<any>(this.chatApiUrl, payload).subscribe({
+      next: (response) => {
+        this.isChatLoading = false;
+        // Remove loading message
+        this.removeChatMessage(loadingMessage.id);
+        
+        // Add AI response
+        const aiResponse = this.extractChatResponse(response);
+        this.addChatMessage(aiResponse, false);
+      },
+      error: (error) => {
+        this.isChatLoading = false;
+        // Remove loading message
+        this.removeChatMessage(loadingMessage.id);
+        
+        // Add error message
+        this.addChatMessage('Sorry, I encountered an error. Please try again.', false);
+        console.error('Chat error:', error);
+      }
+    });
+  }
+
+  private addChatMessage(content: string, isUser: boolean, isLoading: boolean = false): ChatMessage {
+    const message: ChatMessage = {
+      id: Date.now().toString() + Math.random(),
+      content,
+      isUser,
+      timestamp: new Date(),
+      isLoading
+    };
+    
+    this.chatMessages.push(message);
+    return message;
+  }
+
+  private removeChatMessage(messageId: string): void {
+    this.chatMessages = this.chatMessages.filter(msg => msg.id !== messageId);
+  }
+
+  private extractChatResponse(response: any): string {
+    // Adjust this based on your API response structure
+    if (response && response.choices && response.choices[0] && response.choices[0].message) {
+      return response.choices[0].message.content;
+    }
+    return response.message || response.content || 'No response received';
+  }
+
+  onChatKeyPress(event: KeyboardEvent): void {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      this.sendChatMessage();
+    }
+  }
+
+  clearChat(): void {
+    this.chatMessages = [];
+    this.addChatMessage('Hello! I\'m here to help you with your studies. Feel free to ask me anything!', false);
+  }
 }
 
- 
+
 
