@@ -272,6 +272,7 @@ loadHomeworkAssignments() {
   }
 
   ngOnInit() {
+    console.log('StudentComponent initialized');
     this.loadStudentInfo();
     this.loadStudentCourses();
     this.loadHomeworkAssignments(); // Add this line
