@@ -84,8 +84,8 @@ export class ParentComponent implements OnInit {
 
   loadParentInfo() {
     if (this.userId) {
-      // Use the users microservice endpoint
-      this.http.get(`http://localhost:8001/api/parents/${this.userId}/`).subscribe({
+      // Use HTTPS consistently for users microservice endpoint
+      this.http.get(`https://localhost:8001/api/parents/${this.userId}/`).subscribe({
         next: (response: any) => {
           this.parentForm.patchValue({
             username: response.username,
@@ -102,8 +102,8 @@ export class ParentComponent implements OnInit {
 
   loadChildren() {
     if (this.userId) {
-      // Use the users microservice endpoint
-      this.http.get(`http://localhost:8001/api/parents/${this.userId}/children/`).subscribe({
+      // Change this to HTTPS to match the microservice
+      this.http.get(`https://localhost:8001/api/parents/${this.userId}/children/`).subscribe({
         next: (children: any) => {
           this.children = children;
         },
@@ -121,8 +121,8 @@ export class ParentComponent implements OnInit {
         password: this.parentForm.value.password || undefined
       };
 
-      // Use the users microservice endpoint
-      this.http.put(`http://localhost:8001/api/parents/${this.userId}/`, updateData).subscribe({
+      // Use HTTPS consistently for users microservice endpoint
+      this.http.put(`https://localhost:8001/api/parents/${this.userId}/`, updateData).subscribe({
         next: (response: any) => {
           alert('Information updated successfully');
           this.loadParentInfo();

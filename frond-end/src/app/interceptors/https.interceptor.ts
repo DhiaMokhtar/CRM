@@ -5,11 +5,12 @@ import { Observable } from 'rxjs';
 @Injectable()
 export class HttpsInterceptor implements HttpInterceptor {
   intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
-    // Skip HTTPS upgrade for LM Studio server
+    // Only skip HTTPS upgrade for LM Studio server (chatbot)
     if (req.url.startsWith('http://localhost:1234/')) {
       return next.handle(req);
     }
-    // Clone the request and ensure HTTPS for other URLs
+    
+    // Convert all other requests to HTTPS (including users microservice)
     const httpsReq = req.clone({
       url: req.url.replace('http://', 'https://'),
       setHeaders: {

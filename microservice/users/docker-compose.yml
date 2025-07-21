@@ -40,6 +40,7 @@ services:
         condition: service_healthy
     volumes:
       - .:/app
+      - ./ssl:/app/ssl  # Mount local SSL directory
     networks:
       - users_network
     extra_hosts:
@@ -51,8 +52,10 @@ services:
         sleep 10 &&
         echo 'Running migrations...' &&
         python manage.py migrate &&
-        echo 'Starting Django server with auto-reload...' &&
-        python manage.py runserver 0.0.0.0:8000
+        echo 'Checking SSL certificates...' &&
+        ls -la /app/ssl/ &&
+        echo 'Starting Django server with HTTPS...' &&
+        python manage.py runsslserver 0.0.0.0:8000 --certificate /app/ssl/localhost.pem --key /app/ssl/localhost-key.pem
       "
 
 volumes:

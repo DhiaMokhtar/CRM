@@ -17,7 +17,7 @@ export interface LoginResponse {
   providedIn: 'root'
 })
 export class AuthService {
-  private apiUrl = 'http://localhost:8001/api';  // Point to users microservice
+  private apiUrl = 'https://localhost:8001/api';  // HTTPS for users microservice
   private currentUserSubject = new BehaviorSubject<any>(null);
   public currentUser$ = this.currentUserSubject.asObservable();
   private isBrowser: boolean;

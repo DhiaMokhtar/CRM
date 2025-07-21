@@ -16,9 +16,9 @@ from decouple import config
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = config('SECRET_KEY', default='your-secret-key-here')
+SECRET_KEY = config('SECRET_KEY', default='django-insecure-1+e#)73aknts5v9id(oqr#*dg2_pqzk86h-zrq^5^15s_v&&1%')
 DEBUG = config('DEBUG', default=True, cast=bool)
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', '*']
 
 
 # Application definition
@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'corsheaders',
+    'sslserver',  # Add SSL server support
     'users',
 ]
 
@@ -82,16 +83,15 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [],
 }
 
+# CORS Configuration for HTTPS
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
-# Add your frontend URL to CORS settings
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:4200",
-    "https://localhost:4200"
+    "https://localhost:4200",
+    "http://localhost:4200",  # Keep HTTP for fallback
 ]
 
-# Allow specific headers
 CORS_ALLOW_HEADERS = [
     'accept',
     'accept-encoding',
@@ -102,27 +102,38 @@ CORS_ALLOW_HEADERS = [
     'user-agent',
     'x-csrftoken',
     'x-requested-with',
+    'cache-control',
+    'pragma',
 ]
 
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
 
-# Internationalization
-# https://docs.djangoproject.com/en/5.1/topics/i18n/
+# HTTPS Security settings
+SECURE_SSL_REDIRECT = False  # Keep False for development
+SESSION_COOKIE_SECURE = True  # Enable for HTTPS cookies
+CSRF_COOKIE_SECURE = True    # Enable for HTTPS CSRF
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
 
-LANGUAGE_CODE = 'en-us'
+CSRF_TRUSTED_ORIGINS = [
+    'https://localhost:4200',
+    'https://localhost:8001',
+]
 
 TIME_ZONE = 'UTC'
-
 USE_I18N = True
-
 USE_TZ = True
-
-
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.1/howto/static-files/
+APPEND_SLASH = False
 
 STATIC_URL = '/static/'
-
-# Default primary key field type
-# https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
