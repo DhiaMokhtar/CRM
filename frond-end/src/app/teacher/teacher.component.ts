@@ -135,7 +135,8 @@ export class TeacherComponent implements OnInit {
 
   loadTeacherInfo() {
     if (this.userId) {
-      this.http.get(`http://localhost:8000/api/teachers/${this.userId}/`).subscribe({
+      // Use the users microservice endpoint
+      this.http.get(`http://localhost:8001/api/teachers/${this.userId}/`).subscribe({
         next: (response: any) => {
           this.teacherForm.patchValue({
             username: response.username,
@@ -152,7 +153,8 @@ export class TeacherComponent implements OnInit {
 
   loadTeacherClasses() {
     if (this.userId) {
-      this.http.get(`http://localhost:8000/api/teachers/${this.userId}/`).subscribe({
+      // Use the users microservice endpoint
+      this.http.get(`http://localhost:8001/api/teachers/${this.userId}/`).subscribe({
         next: (response: any) => {
           this.classes = response.classes || [];
         },
@@ -171,7 +173,8 @@ export class TeacherComponent implements OnInit {
         class_ids: this.classes.map(c => c.id)
       };
 
-      this.http.put(`http://localhost:8000/api/teachers/${this.userId}/`, updateData).subscribe({
+      // Use the users microservice endpoint
+      this.http.put(`http://localhost:8001/api/teachers/${this.userId}/`, updateData).subscribe({
         next: (response: any) => {
           alert('Information updated successfully');
           this.loadTeacherInfo();
@@ -646,7 +649,7 @@ selectClassForGrading(classItem: any) {
 
 
 
-  
+
 
 
 

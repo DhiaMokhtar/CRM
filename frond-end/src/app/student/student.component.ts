@@ -208,14 +208,15 @@ loadHomeworkAssignments() {
 
   loadStudentInfo() {
     if (this.userId) {
-      this.http.get(`http://localhost:8000/api/students/${this.userId}/`).subscribe({
+      // Use the users microservice endpoint
+      this.http.get(`http://localhost:8001/api/students/${this.userId}/`).subscribe({
         next: (response: any) => {
+          this.updateData = response;
           this.studentForm.patchValue({
             username: response.username,
             email: response.email,
-            password: '' // Leave password empty
+            password: ''
           });
-          this.updateData = response;
         },
         error: (error) => {
           console.error('Error loading student info:', error);
@@ -231,8 +232,9 @@ loadHomeworkAssignments() {
         // Only include password if it was changed
         password: this.studentForm.value.password || undefined
       };
-      console.log(updateDataUp);
-      this.http.put(`http://localhost:8000/api/students/${this.userId}/`, updateDataUp).subscribe({
+      
+      // Use the users microservice endpoint
+      this.http.put(`http://localhost:8001/api/students/${this.userId}/`, updateDataUp).subscribe({
         next: (response: any) => {
           alert('Information updated successfully');
           this.loadStudentInfo(); // Reload the info

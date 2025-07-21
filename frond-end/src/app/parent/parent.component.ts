@@ -84,7 +84,8 @@ export class ParentComponent implements OnInit {
 
   loadParentInfo() {
     if (this.userId) {
-      this.http.get(`http://localhost:8000/api/parents/${this.userId}/`).subscribe({
+      // Use the users microservice endpoint
+      this.http.get(`http://localhost:8001/api/parents/${this.userId}/`).subscribe({
         next: (response: any) => {
           this.parentForm.patchValue({
             username: response.username,
@@ -101,10 +102,10 @@ export class ParentComponent implements OnInit {
 
   loadChildren() {
     if (this.userId) {
-      this.http.get(`http://localhost:8000/api/parents/${this.userId}/children/`).subscribe({
-        next: (response: any) => {
-          this.children = response;
-          console.log(this.children);
+      // Use the users microservice endpoint
+      this.http.get(`http://localhost:8001/api/parents/${this.userId}/children/`).subscribe({
+        next: (children: any) => {
+          this.children = children;
         },
         error: (error) => {
           console.error('Error loading children:', error);
@@ -116,16 +117,12 @@ export class ParentComponent implements OnInit {
   updateInfo() {
     if (this.parentForm.valid && this.userId) {
       const updateData = {
-        username: this.parentForm.value.username,
-        email: this.parentForm.value.email,
-        password: ''
+        ...this.parentForm.value,
+        password: this.parentForm.value.password || undefined
       };
 
-      if (this.parentForm.value.password) {
-        updateData['password'] = this.parentForm.value.password;
-      }
-
-      this.http.put(`http://localhost:8000/api/parents/${this.userId}/`, updateData).subscribe({
+      // Use the users microservice endpoint
+      this.http.put(`http://localhost:8001/api/parents/${this.userId}/`, updateData).subscribe({
         next: (response: any) => {
           alert('Information updated successfully');
           this.loadParentInfo();
