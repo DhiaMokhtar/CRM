@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  mysql_courses:
+    image: mysql:8.0
+    container_name: mysql_courses
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: courses_db
+      MYSQL_USER: crm_user
+      MYSQL_PASSWORD: crm_password
+    ports:
+      - "3308:3306"
+    volumes:
+      - mysql_courses_data:/var/lib/mysql
+    networks:
+      - courses_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-ppassword"]
+      timeout: 20s
+      retries: 10
+      interval: 10s
+      start_period: 40s
+
+  courses_service:
+    build: .
+    container_name: courses_service
+    environment:
+      - SECRET_KEY=django-insecure-courses-key
+      - DEBUG=True
+      - DB_NAME=courses_db
+      - DB_USER=root
+      - DB_PASSWORD=password
+      - DB_HOST=mysql_courses
+      - DB_PORT=3306
+    ports:
+      - "8002:8000"
+    volumes:
+      - ./fileCourses:/app/fileCourses
+      - ../../localhost.pem:/app/ssl/localhost.pem
+      - ../../localhost-key.pem:/app/ssl/localhost-key.pem
+    depends_on:
+      mysql_courses:
+        condition: service_healthy
+    networks:
+      - courses_network
+    restart: unless-stopped
+    command: >
+      sh -c "
+        echo 'Waiting for MySQL to be ready...' &&
+        while ! mysqladmin ping -h mysql_courses -u root -ppassword --silent; do
+          echo 'Waiting for MySQL...' &&
+          sleep 2
+        done &&
+        echo 'MySQL is ready!' &&
+        echo 'Making migrations...' &&
+        python manage.py makemigrations &&
+        echo 'Running migrations...' &&
+        python manage.py migrate &&
+        echo 'Collecting static files...' &&
+        python manage.py collectstatic --noinput &&
+        echo 'Creating file directories...' &&
+        mkdir -p /app/fileCourses &&
+        mkdir -p /app/media &&
+        echo 'Checking SSL certificates...' &&
+        ls -la /app/ssl/ &&
+        echo 'Starting Django server with HTTPS...' &&
+        python manage.py runsslserver 0.0.0.0:8000 --certificate /app/ssl/localhost.pem --key /app/ssl/localhost-key.pem
+      "
+
+volumes:
+  mysql_courses_data:
+
+networks:
+  courses_network:
+    driver: bridge

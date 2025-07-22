@@ -9,6 +9,7 @@ import { Homework } from '../api.service';
 import { Router } from '@angular/router';
 import { MessagingService } from '../services/messaging.service';
 import { trigger, state, style, transition, animate } from '@angular/animations';
+import { ApiService } from '../api.service';
 
 // Add interface at the top of the file
 interface Notification {
@@ -80,6 +81,7 @@ export class StudentComponent implements OnInit {
     private route: ActivatedRoute,
     private router: Router,
     private messagingService: MessagingService,
+    private apiService: ApiService, // Add ApiService
     @Inject(PLATFORM_ID) private platformId: Object
   ) {
     const userStr = localStorage.getItem('currentUser');
@@ -260,9 +262,10 @@ loadHomeworkAssignments() {
     window.location.href = '/auth';
   }
 
+  // Update loadStudentCourses method
   loadStudentCourses() {
     if (this.userId) {
-      this.http.get(`http://localhost:8000/api/students/${this.userId}/courses/`).subscribe({
+      this.apiService.getStudentCourses(parseInt(this.userId)).subscribe({
         next: (response: any) => {
           this.lessons = response;
         },

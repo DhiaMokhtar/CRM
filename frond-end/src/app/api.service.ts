@@ -165,6 +165,7 @@ export interface GradeTable {
 export class ApiService {
   private baseUrl = environment.apiUrl;  // Main backend
   private usersServiceUrl = environment.usersServiceUrl;  // Users microservice
+  private coursesServiceUrl = environment.coursesServiceUrl;  // Courses microservice
   
   private teacherUrl = `${this.usersServiceUrl}/teachers/`;
   private studentUrl = `${this.usersServiceUrl}/students/`;
@@ -351,48 +352,57 @@ export class ApiService {
     return this.http.get<Student[]>(`${this.usersServiceUrl}/parents/${parentId}/children/`, { withCredentials: true });
   }
 
-  // Lesson methods (main backend)
+  // Lesson methods (using courses microservice)
   getLessons(classroomId?: number): Observable<Lesson[]> {
-    const params = classroomId ? `?class_room=${classroomId}` : '';
-    return this.http.get<Lesson[]>(`${this.baseUrl}/lessons/${params}`, { withCredentials: true });
+    const params = classroomId ? `?classroom=${classroomId}` : '';
+    return this.http.get<Lesson[]>(`${this.coursesServiceUrl}/lessons/${params}`, { withCredentials: true });
   }
 
   createLesson(lesson: Partial<Lesson>): Observable<Lesson> {
-    return this.http.post<Lesson>(`${this.baseUrl}/lessons/`, lesson, { withCredentials: true });
+    return this.http.post<Lesson>(`${this.coursesServiceUrl}/lessons/`, lesson, { withCredentials: true });
   }
 
   updateLesson(id: number, lesson: Partial<Lesson>): Observable<Lesson> {
-    return this.http.put<Lesson>(`${this.baseUrl}/lessons/${id}/`, lesson, { withCredentials: true });
+    return this.http.put<Lesson>(`${this.coursesServiceUrl}/lessons/${id}/`, lesson, { withCredentials: true });
   }
 
   deleteLesson(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.baseUrl}/lessons/${id}/`, { withCredentials: true });
+    return this.http.delete<void>(`${this.coursesServiceUrl}/lessons/${id}/`, { withCredentials: true });
   }
 
-  // Chapter methods (main backend)
+  // Chapter methods (courses microservice)
   getChapters(lessonId: number): Observable<Chapter[]> {
-    return this.http.get<Chapter[]>(`${this.baseUrl}/lessons/${lessonId}/chapters/`, { withCredentials: true });
+    return this.http.get<Chapter[]>(`${this.coursesServiceUrl}/chapters/?lesson=${lessonId}`, { withCredentials: true });
   }
 
   createChapter(chapter: Partial<Chapter>): Observable<Chapter> {
-    return this.http.post<Chapter>(`${this.baseUrl}/chapters/`, chapter, { withCredentials: true });
+    return this.http.post<Chapter>(`${this.coursesServiceUrl}/chapters/`, chapter, { withCredentials: true });
   }
 
   updateChapter(id: number, chapter: Partial<Chapter>): Observable<Chapter> {
-    return this.http.put<Chapter>(`${this.baseUrl}/chapters/${id}/`, chapter, { withCredentials: true });
+    return this.http.put<Chapter>(`${this.coursesServiceUrl}/chapters/${id}/`, chapter, { withCredentials: true });
   }
 
   deleteChapter(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.baseUrl}/chapters/${id}/`, { withCredentials: true });
+    return this.http.delete<void>(`${this.coursesServiceUrl}/chapters/${id}/`, { withCredentials: true });
   }
 
-  // Course Material methods (main backend)
+  // Course Material methods (courses microservice)
+  getCourseMaterials(chapterId: number): Observable<CourseMaterial[]> {
+    return this.http.get<CourseMaterial[]>(`${this.coursesServiceUrl}/courses/?chapter=${chapterId}`, { withCredentials: true });
+  }
+
   createCourseMaterial(formData: FormData): Observable<CourseMaterial> {
-    return this.http.post<CourseMaterial>(`${this.baseUrl}/course-materials/`, formData, { withCredentials: true });
+    return this.http.post<CourseMaterial>(`${this.coursesServiceUrl}/courses/`, formData, { withCredentials: true });
   }
 
   deleteCourseMaterial(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.baseUrl}/course-materials/${id}/`, { withCredentials: true });
+    return this.http.delete<void>(`${this.coursesServiceUrl}/courses/${id}/`, { withCredentials: true });
+  }
+
+  // Student courses (courses microservice)
+  getStudentCourses(studentId: number): Observable<any> {
+    return this.http.get<any>(`${this.coursesServiceUrl}/students/${studentId}/courses/`, { withCredentials: true });
   }
 
   // Homework methods (main backend)

@@ -10,7 +10,7 @@ export class HttpsInterceptor implements HttpInterceptor {
       return next.handle(req);
     }
     
-    // Convert all other requests to HTTPS (including users microservice)
+    // Convert all other requests to HTTPS (including courses microservice)
     const httpsReq = req.clone({
       url: req.url.replace('http://', 'https://'),
       setHeaders: {

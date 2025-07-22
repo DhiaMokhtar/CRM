@@ -5,6 +5,8 @@ import { ActivatedRoute } from '@angular/router';
 // Add these imports to the existing imports
 import { Router } from '@angular/router';
 import { MessagingService } from '../services/messaging.service';
+import { ApiService } from '../api.service'; // Fix: Change from '../services/api.service' to '../api.service'
+
 // Add homework interfaces
 interface Homework {
   id: number;
@@ -52,7 +54,8 @@ export class ParentComponent implements OnInit {
     private http: HttpClient,
     private route: ActivatedRoute,
     private router: Router,
-    private messagingService: MessagingService
+    private messagingService: MessagingService,
+    private apiService: ApiService // Add ApiService
   ) {
     const userStr = localStorage.getItem('currentUser');
     const userData = userStr ? JSON.parse(userStr) : null;
@@ -196,15 +199,15 @@ export class ParentComponent implements OnInit {
 
   // Update the existing loadChildCourses method
   loadChildCourses(childId: number) {
-    this.http.get(`http://localhost:8000/api/students/${childId}/courses/`).subscribe({
+    this.apiService.getStudentCourses(childId).subscribe({
       next: (response: any) => {
         this.childLessons = response;
         this.selectedChild = this.children.find(child => child.id === childId);
         this.loadChildComments(childId);
-        this.loadChildHomework(childId); // Add this line
+        this.loadChildHomework(childId);
         this.setActiveSection('childCourses');
       },
-      error: (error) => {
+      error: (error: any) => { // Fix: Add type annotation
         console.error('Error loading child courses:', error);
       }
     });

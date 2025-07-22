@@ -38,7 +38,6 @@ interface HomeworkSubmission {
   templateUrl: './teacher.component.html',
   styleUrl: './teacher.component.scss'
 })
-
 export class TeacherComponent implements OnInit {
   selectedClass: any = null;
   classStudents: any[] = [];
@@ -133,10 +132,11 @@ export class TeacherComponent implements OnInit {
   }
   
 
+  // Fix loadTeacherInfo to use HTTPS
   loadTeacherInfo() {
     if (this.userId) {
-      // Use the users microservice endpoint
-      this.http.get(`http://localhost:8001/api/teachers/${this.userId}/`).subscribe({
+      // Use HTTPS for users microservice endpoint
+      this.http.get(`https://localhost:8001/api/teachers/${this.userId}/`).subscribe({
         next: (response: any) => {
           this.teacherForm.patchValue({
             username: response.username,
@@ -151,10 +151,11 @@ export class TeacherComponent implements OnInit {
     }
   }
 
+  // Fix loadTeacherClasses to use HTTPS
   loadTeacherClasses() {
     if (this.userId) {
-      // Use the users microservice endpoint
-      this.http.get(`http://localhost:8001/api/teachers/${this.userId}/`).subscribe({
+      // Use HTTPS for users microservice endpoint
+      this.http.get(`https://localhost:8001/api/teachers/${this.userId}/`).subscribe({
         next: (response: any) => {
           this.classes = response.classes || [];
         },
@@ -165,6 +166,7 @@ export class TeacherComponent implements OnInit {
     }
   }
 
+  // Fix updateInfo to use HTTPS
   updateInfo() {
     if (this.teacherForm.valid && this.userId) {
       const updateData = {
@@ -173,8 +175,8 @@ export class TeacherComponent implements OnInit {
         class_ids: this.classes.map(c => c.id)
       };
 
-      // Use the users microservice endpoint
-      this.http.put(`http://localhost:8001/api/teachers/${this.userId}/`, updateData).subscribe({
+      // Use HTTPS for users microservice endpoint
+      this.http.put(`https://localhost:8001/api/teachers/${this.userId}/`, updateData).subscribe({
         next: (response: any) => {
           alert('Information updated successfully');
           this.loadTeacherInfo();
@@ -198,28 +200,9 @@ export class TeacherComponent implements OnInit {
 
   lessons: Lesson[] = [];
 
-  addNewLesson() {
-    const title = prompt('Enter lesson title:');
-    if (title && this.selectedClass) {
-      const newLesson = {
-        title,
-        classroom: this.selectedClass.id,
-        chapters: []
-      };
-
-      this.http.post(`http://localhost:8000/api/lessons/`, newLesson).subscribe({
-        next: (response: any) => {
-          this.loadLessons(this.selectedClass.id);
-        },
-        error: (error) => {
-          console.error('Error creating lesson:', error);
-        }
-      });
-    }
-  }
-
+  // Update loadLessons method
   loadLessons(classId: number) {
-    this.http.get<Lesson[]>(`http://localhost:8000/api/lessons/?class_room=${classId}`).subscribe({
+    this.apiService.getLessons(classId).subscribe({
       next: (lessons) => {
         this.lessons = lessons;
         console.log('class:', classId);
@@ -232,8 +215,9 @@ export class TeacherComponent implements OnInit {
     });
   }
 
+  // Update loadChapters method
   loadChapters(lesson: Lesson) {
-    this.http.get<Chapter[]>(`http://localhost:8000/api/chapters/?lesson=${lesson.id}`).subscribe({
+    this.apiService.getChapters(lesson.id).subscribe({
       next: (chapters) => {
         lesson.chapters = chapters;
         chapters.forEach(chapter => this.loadCourseMaterials(chapter));
@@ -244,11 +228,11 @@ export class TeacherComponent implements OnInit {
     });
   }
 
+  // Update loadCourseMaterials method
   loadCourseMaterials(chapter: Chapter) {
-    this.http.get<CourseMaterial[]>(`http://localhost:8000/api/courses/?chapter=${chapter.id}`).subscribe({
+    this.apiService.getCourseMaterials(chapter.id).subscribe({
       next: (materials) => {
         chapter.materials = materials;
-        //console.log("material:"+chapter.materials)
         chapter.materials.forEach(material => {
           console.log("material:"+material.pdf);
         });
@@ -259,18 +243,35 @@ export class TeacherComponent implements OnInit {
     });
   }
 
+  addNewLesson() {
+    const title = prompt('Enter lesson title:');
+    if (title && this.selectedClass) {
+      const newLesson = {
+        title,
+        classroom: this.selectedClass.id,
+      };
+
+      this.apiService.createLesson(newLesson).subscribe({
+        next: (response: any) => {
+          this.loadLessons(this.selectedClass.id);
+        },
+        error: (error) => {
+          console.error('Error creating lesson:', error);
+        }
+      });
+    }
+  }
+
+  // Update addChapter method
   addChapter(lesson: Lesson) {
     const title = prompt('Enter chapter title:');
     if (title) {
       const newChapter = {
         title,
-        description: '',
         lesson: lesson.id,
-        order: lesson.chapters.length,
-        materials: []
       };
 
-      this.http.post(`http://localhost:8000/api/chapters/`, newChapter).subscribe({
+      this.apiService.createChapter(newChapter).subscribe({
         next: (response: any) => {
           this.loadChapters(lesson);
         },
@@ -294,16 +295,15 @@ export class TeacherComponent implements OnInit {
     }
   }
 
+  // Update uploadContent method
   uploadContent(chapter: Chapter) {
     if (chapter.selectedFile) {
-      // Replace lines 276-285 with this corrected version:
       const formData = new FormData();
       formData.append('title', chapter.selectedFile.name);
       formData.append('chapter', chapter.id.toString());
       formData.append('pdf_file', chapter.selectedFile);
-      formData.append('teacher_id', this.userId?.toString() || '');
       
-      this.http.post(`http://localhost:8000/api/courses/`, formData).subscribe({
+      this.apiService.createCourseMaterial(formData).subscribe({
         next: (response: any) => {
           this.loadCourseMaterials(chapter);
           chapter.isAddingContent = false;
@@ -322,9 +322,10 @@ export class TeacherComponent implements OnInit {
     chapter.selectedFile = undefined;  // Changed from null to undefined
   }
 
+  // Update deleteMaterial method
   deleteMaterial(chapter: Chapter, material: CourseMaterial) {
     if (confirm('Are you sure you want to delete this material?')) {
-      this.http.delete(`http://localhost:8000/api/courses/${material.id}/`).subscribe({
+      this.apiService.deleteCourseMaterial(material.id).subscribe({
         next: () => {
           this.loadCourseMaterials(chapter);
         },
@@ -349,8 +350,9 @@ export class TeacherComponent implements OnInit {
     }
   }
 
+  // Fix loadClassStudents to use HTTPS
   loadClassStudents(classId: number) {
-    this.http.get(`http://localhost:8000/api/classes/${classId}/students/`).subscribe({
+    this.http.get(`https://localhost:8000/api/classes/${classId}/students/`).subscribe({
       next: (response: any) => {
         this.classStudents = response;
       },
@@ -362,7 +364,7 @@ export class TeacherComponent implements OnInit {
   }
   // Update the loadClassHomework method to include submissions
   loadClassHomework(classId: number) {
-    this.http.get<Homework[]>(`http://localhost:8000/api/homeworks/?classroom=${classId}`)
+    this.http.get<Homework[]>(`https://localhost:8000/api/homeworks/?classroom=${classId}`)
       .subscribe({
         next: (homework) => {
           this.classHomework = homework;
@@ -378,9 +380,9 @@ export class TeacherComponent implements OnInit {
       });
   }
   
-  // Add method to load homework submissions
+  // Fix loadHomeworkSubmissions to use HTTPS
   loadHomeworkSubmissions(homeworkId: number) {
-    this.http.get<HomeworkSubmission[]>(`http://localhost:8000/api/homework-submissions/?homework=${homeworkId}`)
+    this.http.get<HomeworkSubmission[]>(`https://localhost:8000/api/homework-submissions/?homework=${homeworkId}`)
       .subscribe({
         next: (submissions) => {
           // Find the homework and attach its submissions
@@ -409,7 +411,7 @@ export class TeacherComponent implements OnInit {
         teacher: this.userId
       };
       
-      this.http.post('http://localhost:8000/api/homeworks/', homeworkData)
+      this.http.post('https://localhost:8000/api/homeworks/', homeworkData)
         .subscribe({
           next: (response: any) => {
             this.loadClassHomework(this.selectedClass.id);
@@ -423,10 +425,10 @@ export class TeacherComponent implements OnInit {
     }
   }
   
-  // Add method to delete a homework
+  // Fix deleteHomework to use HTTPS
   deleteHomework(homeworkId: number) {
     if (confirm('Are you sure you want to delete this homework assignment?')) {
-      this.http.delete(`http://localhost:8000/api/homeworks/${homeworkId}/`)
+      this.http.delete(`https://localhost:8000/api/homeworks/${homeworkId}/`)
         .subscribe({
           next: () => {
             this.loadClassHomework(this.selectedClass.id);
@@ -472,9 +474,10 @@ export class TeacherComponent implements OnInit {
     this.newComment = '';
   }
 
+  // Fix loadStudentComments to use HTTPS
   loadStudentComments() {
     if (this.selectedStudent) {
-      this.http.get(`http://localhost:8000/api/student-comments/?student=${this.selectedStudent.id}`)
+      this.http.get(`https://localhost:8000/api/student-comments/?student=${this.selectedStudent.id}`)
         .subscribe({
           next: (response: any) => {
             this.studentComments = response;
@@ -486,6 +489,7 @@ export class TeacherComponent implements OnInit {
     }
   }
 
+  // Fix addComment to use HTTPS
   addComment() {
     if (this.newComment.trim() && this.selectedStudent && this.userId) {
       const commentData = {
@@ -494,7 +498,7 @@ export class TeacherComponent implements OnInit {
         content: this.newComment.trim()
       };
       
-      this.http.post('http://localhost:8000/api/student-comments/', commentData)
+      this.http.post('https://localhost:8000/api/student-comments/', commentData)
         .subscribe({
           next: (response: any) => {
             this.loadStudentComments();
