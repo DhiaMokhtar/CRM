@@ -43,19 +43,19 @@ export class MessagingComponent implements OnInit, OnDestroy {
     this.subscriptions.push(
       this.authService.currentUser$.subscribe(user => {
         this.currentUser = user;
-        
+        if (user) {
+          this.loadConversations();
+        }
       })
     );
 
-    
     // Subscribe to conversations
     this.subscriptions.push(
       this.messagingService.conversations$.subscribe(conversations => {
-        
         this.conversations = conversations;
-        
       })
     );
+    
     // Subscribe to messages
     this.subscriptions.push(
       this.messagingService.messages$.subscribe(messages => {
@@ -83,6 +83,10 @@ export class MessagingComponent implements OnInit, OnDestroy {
     this.subscriptions.forEach(sub => sub.unsubscribe());
   }
 
+  loadConversations(): void {
+    this.messagingService.loadConversations();
+  }
+
   selectConversation(conversation: Conversation): void {
     this.messagingService.selectConversation(conversation);
     this.showNewConversation = false;
@@ -101,13 +105,14 @@ export class MessagingComponent implements OnInit, OnDestroy {
     if (this.searchQuery.trim().length > 2) {
       this.messagingService.searchUsers(this.searchQuery).subscribe({
         next: (users) => {
-          // Filter out current user
+          // Filter out current user using correct property names
           this.searchResults = users.filter(user => 
-            !(user.type === this.currentUser?.userType && user.id === this.currentUser?.userId)
+            !(user.type === this.currentUser?.user_type && user.id === this.currentUser?.user_id)
           );
         },
         error: (error) => {
           console.error('Error searching users:', error);
+          this.searchResults = [];
         }
       });
     } else {
@@ -126,42 +131,40 @@ export class MessagingComponent implements OnInit, OnDestroy {
       return;
     }
 
-    let recipientType: string;
-    let recipientId: number;
-
-    if (this.showNewConversation && this.selectedRecipient) {
-      // New conversation
-      recipientType = this.selectedRecipient.type;
-      recipientId = this.selectedRecipient.id;
-    } else if (this.selectedConversation) {
-      // Existing conversation
-      const currentUserType = this.currentUser?.user_type;
-      const currentUserId = this.currentUser?.user_id;
-      
-      if (this.selectedConversation.participant1_type === currentUserType && 
-          this.selectedConversation.participant1_id === currentUserId) {
-        recipientType = this.selectedConversation.participant2_type;
-        recipientId = this.selectedConversation.participant2_id;
-      } else {
-        recipientType = this.selectedConversation.participant1_type;
-        recipientId = this.selectedConversation.participant1_id;
-      }
-    } else {
-      return;
-    }
-
-    this.messagingService.sendMessage(recipientType, recipientId, this.messageContent).subscribe({
-      next: (message) => {
-        this.messageContent = '';
-        if (this.showNewConversation) {
-          this.showNewConversation = false;
-          // The conversation list will be refreshed automatically
+    if (this.selectedConversation) {
+      // Sending to existing conversation
+      this.messagingService.sendMessage(
+        this.selectedConversation.id,
+        this.messageContent.trim()
+      ).subscribe({
+        next: (response) => {
+          console.log('Message sent successfully:', response);
+          this.messageContent = '';
+          this.messagingService.loadConversationMessages(this.selectedConversation!.id); // Changed from loadMessages
+        },
+        error: (error) => {
+          console.error('Error sending message:', error);
         }
-      },
-      error: (error) => {
-        console.error('Error sending message:', error);
-      }
-    });
+      });
+    } else if (this.selectedRecipient) {
+      // Starting new conversation
+      this.messagingService.createMessage(
+        this.selectedRecipient.type,
+        this.selectedRecipient.id,
+        this.messageContent.trim()
+      ).subscribe({
+        next: (response) => {
+          console.log('Message sent successfully:', response);
+          this.messageContent = '';
+          this.selectedRecipient = null;
+          this.showNewConversation = false;
+          this.loadConversations(); // Refresh conversations
+        },
+        error: (error) => {
+          console.error('Error sending message:', error);
+        }
+      });
+    }
   }
 
   markAsRead(message: Message): void {
@@ -171,13 +174,13 @@ export class MessagingComponent implements OnInit, OnDestroy {
   }
 
   isRecipient(message: Message): boolean {
-    return message.recipient_type === this.currentUser?.userType && 
-           message.recipient_id === this.currentUser?.userId;
+    return message.recipient_type === this.currentUser?.user_type && 
+           message.recipient_id === this.currentUser?.user_id;
   }
 
   isSender(message: Message): boolean {
-    return message.sender_type === this.currentUser?.userType && 
-           message.sender_id === this.currentUser?.userId;
+    return message.sender_type === this.currentUser?.user_type && 
+           message.sender_id === this.currentUser?.user_id;
   }
 
   getConversationPartnerName(conversation: Conversation): string {

@@ -3,6 +3,35 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../environments/environment';
 
+// Add messaging interfaces
+export interface Message {
+  id: number;
+  sender_type: string;
+  sender_id: number;
+  recipient_type: string;
+  recipient_id: number;
+  content: string;
+  is_read: boolean;
+  created_at: string;
+  created_at_formatted: string;
+  sender_name: string;
+  recipient_name: string;
+}
+
+export interface Conversation {
+  id: number;
+  participant1_type: string;
+  participant1_id: number;
+  participant2_type: string;
+  participant2_id: number;
+  participant1_name: string;
+  participant2_name: string;
+  last_message_content: string;
+  last_message_time: string;
+  updated_at: string;
+  unread_count: number;
+}
+
 export interface Teacher {
   id: number;
   username: string;
@@ -89,34 +118,6 @@ export interface Homework {
   comments?: string;
 }
 
-export interface Message {
-  id: number;
-  sender_type: string;
-  sender_id: number;
-  recipient_type: string;
-  recipient_id: number;
-  content: string;
-  is_read: boolean;
-  created_at: string;
-  created_at_formatted: string;
-  sender_name: string;
-  recipient_name: string;
-}
-
-export interface Conversation {
-  id: number;
-  participant1_type: string;
-  participant1_id: number;
-  participant2_type: string;
-  participant2_id: number;
-  participant1_name: string;
-  participant2_name: string;
-  last_message_content: string;
-  last_message_time: string;
-  updated_at: string;
-  unread_count: number;
-}
-
 export interface User {
   id: number;
   username: string;
@@ -163,104 +164,95 @@ export interface GradeTable {
   providedIn: 'root'
 })
 export class ApiService {
-  private baseUrl = environment.apiUrl;  // Main backend
-  private usersServiceUrl = environment.usersServiceUrl;  // Users microservice
-  private coursesServiceUrl = environment.coursesServiceUrl;  // Courses microservice
-  
-  private teacherUrl = `${this.usersServiceUrl}/teachers/`;
-  private studentUrl = `${this.usersServiceUrl}/students/`;
+  private baseUrl = environment.apiUrl;
+  private usersServiceUrl = environment.usersServiceUrl;
+  private coursesServiceUrl = environment.coursesServiceUrl;
+  private messagingServiceUrl = environment.messagingServiceUrl;
   private classUrl = `${this.usersServiceUrl}/classes/`;
-  private parentUrl = `${this.usersServiceUrl}/parents/`;
-  private administratorUrl = `${this.usersServiceUrl}/administrators/`;
 
   constructor(private http: HttpClient) {}
 
-  // User-related methods (using microservice)
-  getTeachers(): Observable<Teacher[]> {
-    return this.http.get<Teacher[]>(this.teacherUrl, { withCredentials: true });
-  }
-
-  getStudents(): Observable<Student[]> {
-    return this.http.get<Student[]>(this.studentUrl, { withCredentials: true });
-  }
-
-  addTeacher(teacher: Teacher): Observable<Teacher> {
-    return this.http.post<Teacher>(this.teacherUrl, teacher, { withCredentials: true });
-  }
-
-  addStudent(student: Student): Observable<Student> {
-    return this.http.post<Student>(this.studentUrl, student, { withCredentials: true });
-  }
-
-  getClasses(): Observable<Class[]> {
-    return this.http.get<Class[]>(this.classUrl, { withCredentials: true });
-  }
-
-  updateStudent(student: Student): Observable<Student> {
-    return this.http.put<Student>(`${this.studentUrl}${student.id}/`, student, { withCredentials: true });
-  }
-
-  updateTeacher(teacher: Teacher): Observable<Teacher> {
-    return this.http.put<Teacher>(`${this.teacherUrl}${teacher.id}/`, teacher, { withCredentials: true });
-  }
-
-  deleteTeacher(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.teacherUrl}${id}/`, { withCredentials: true });
-  }
-
-  deleteStudent(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.studentUrl}${id}/`, { withCredentials: true });
-  }
-
-  // Parent methods (using microservice)
-  addParent(parent: Parent): Observable<Parent> {
-    return this.http.post<Parent>(this.parentUrl, parent, { withCredentials: true });
-  }
-
-  getParents(): Observable<Parent[]> {
-    return this.http.get<Parent[]>(this.parentUrl, { withCredentials: true });
-  }
-
-  updateParent(parent: Parent): Observable<Parent> {
-    return this.http.put<Parent>(`${this.parentUrl}${parent.id}/`, parent, { withCredentials: true });
-  }
-
-  deleteParent(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.parentUrl}${id}/`, { withCredentials: true });
-  }
-
-  // Administrator methods (using microservice)
-  getAdministrators(): Observable<any[]> {
-    return this.http.get<any[]>(this.administratorUrl, { withCredentials: true });
-  }
-
-  // Non-user operations still use main backend
+  // Messaging methods (use messaging microservice)
   getConversations(): Observable<Conversation[]> {
-    return this.http.get<Conversation[]>(`${this.baseUrl}/conversations/`, { withCredentials: true });
+    return this.http.get<Conversation[]>(`${this.messagingServiceUrl}/conversations/`, { withCredentials: true });
   }
 
   getMessages(): Observable<Message[]> {
-    return this.http.get<Message[]>(`${this.baseUrl}/messages/`, { withCredentials: true });
+    return this.http.get<Message[]>(`${this.messagingServiceUrl}/messages/`, { withCredentials: true });
   }
 
   getConversationMessages(conversationId: number): Observable<Message[]> {
-    return this.http.get<Message[]>(`${this.baseUrl}/conversations/${conversationId}/messages/`, { withCredentials: true });
+    return this.http.get<Message[]>(`${this.messagingServiceUrl}/conversations/${conversationId}/messages/`, { withCredentials: true });
   }
 
   sendMessage(message: { recipient_type: string, recipient_id: number, content: string }): Observable<Message> {
-    return this.http.post<Message>(`${this.baseUrl}/messages/`, message, { withCredentials: true });
+    return this.http.post<Message>(`${this.messagingServiceUrl}/messages/`, message, { withCredentials: true });
   }
 
   markMessageAsRead(messageId: number): Observable<any> {
-    return this.http.post(`${this.baseUrl}/messages/${messageId}/mark_as_read/`, {}, { withCredentials: true });
+    return this.http.post(`${this.messagingServiceUrl}/messages/${messageId}/mark_as_read/`, {}, { withCredentials: true });
   }
 
   searchUsers(query: string, type?: string): Observable<User[]> {
     let params = `q=${query}`;
+    console.log("params :"+params);
     if (type) {
       params += `&type=${type}`;
     }
-    return this.http.get<User[]>(`${this.baseUrl}/search-users/?${params}`, { withCredentials: true });
+    return this.http.get<User[]>(`${this.messagingServiceUrl}/search-users/?${params}`, { withCredentials: true });
+  }
+
+  // User management methods (use users microservice)
+  getTeachers(): Observable<Teacher[]> {
+    return this.http.get<Teacher[]>(`${this.usersServiceUrl}/teachers/`, { withCredentials: true });
+  }
+
+  addTeacher(teacher: Partial<Teacher>): Observable<Teacher> {
+    return this.http.post<Teacher>(`${this.usersServiceUrl}/teachers/`, teacher, { withCredentials: true });
+  }
+
+  updateTeacher(teacher: Teacher): Observable<Teacher> {
+    return this.http.put<Teacher>(`${this.usersServiceUrl}/teachers/${teacher.id}/`, teacher, { withCredentials: true });
+  }
+
+  deleteTeacher(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.usersServiceUrl}/teachers/${id}/`, { withCredentials: true });
+  }
+
+  getStudents(): Observable<Student[]> {
+    return this.http.get<Student[]>(`${this.usersServiceUrl}/students/`, { withCredentials: true });
+  }
+
+  addStudent(student: Partial<Student>): Observable<Student> {
+    return this.http.post<Student>(`${this.usersServiceUrl}/students/`, student, { withCredentials: true });
+  }
+
+  updateStudent(student: Student): Observable<Student> {
+    return this.http.put<Student>(`${this.usersServiceUrl}/students/${student.id}/`, student, { withCredentials: true });
+  }
+
+  deleteStudent(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.usersServiceUrl}/students/${id}/`, { withCredentials: true });
+  }
+
+  getParents(): Observable<Parent[]> {
+    return this.http.get<Parent[]>(`${this.usersServiceUrl}/parents/`, { withCredentials: true });
+  }
+
+  addParent(parent: Partial<Parent>): Observable<Parent> {
+    return this.http.post<Parent>(`${this.usersServiceUrl}/parents/`, parent, { withCredentials: true });
+  }
+
+  updateParent(parent: Parent): Observable<Parent> {
+    return this.http.put<Parent>(`${this.usersServiceUrl}/parents/${parent.id}/`, parent, { withCredentials: true });
+  }
+
+  deleteParent(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.usersServiceUrl}/parents/${id}/`, { withCredentials: true });
+  }
+
+  getClasses(): Observable<Class[]> {
+    return this.http.get<Class[]>(this.classUrl, { withCredentials: true });
   }
 
   // Add calendar/schedule methods
@@ -277,24 +269,18 @@ export class ApiService {
   }
 
   deleteSchedule(id: number): Observable<any> {
-    return this.http.delete(`${this.baseUrl}/schedules/${id}/`, { withCredentials: true });
+    return this.http.delete<any>(`${this.baseUrl}/schedules/${id}/`, { withCredentials: true });
   }
 
   // Fix the get method to accept URL and optional params
   get(url: string, params?: any): Observable<any> {
-    let fullUrl = `${this.baseUrl}/${url}`;
-    if (params) {
-      const queryParams = new URLSearchParams(params).toString();
-      fullUrl += `?${queryParams}`;
-    }
-    console.log(fullUrl);
+    const queryParams = params ? new URLSearchParams(params).toString() : '';
+    const fullUrl = queryParams ? `${this.baseUrl}/${url}?${queryParams}` : `${this.baseUrl}/${url}`;
     return this.http.get<any>(fullUrl, { withCredentials: true });
   }
 
   post(url: string, data: any): Observable<any> {
-    console.log(data);
     return this.http.post<any>(`${this.baseUrl}/${url}`, data, { withCredentials: true });
-    
   }
 
   // Subject methods
@@ -304,42 +290,42 @@ export class ApiService {
   }
 
   createSubject(subject: Partial<Subject>): Observable<Subject> {
-    return this.http.post<Subject>(`${this.baseUrl}/subjects/`, subject);
+    return this.http.post<Subject>(`${this.baseUrl}/subjects/`, subject, { withCredentials: true });
   }
 
   updateSubject(id: number, subject: Partial<Subject>): Observable<Subject> {
-    return this.http.put<Subject>(`${this.baseUrl}/subjects/${id}/`, subject);
+    return this.http.put<Subject>(`${this.baseUrl}/subjects/${id}/`, subject, { withCredentials: true });
   }
 
   deleteSubject(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.baseUrl}/subjects/${id}/`);
+    return this.http.delete<void>(`${this.baseUrl}/subjects/${id}/`, { withCredentials: true });
   }
 
   // Grade methods
   getGrades(params?: any): Observable<Grade[]> {
     const queryParams = new URLSearchParams(params).toString();
     const url = queryParams ? `${this.baseUrl}/grades/?${queryParams}` : `${this.baseUrl}/grades/`;
-    return this.http.get<Grade[]>(url);
+    return this.http.get<Grade[]>(url, { withCredentials: true });
   }
 
   createGrade(grade: Partial<Grade>): Observable<Grade> {
-    return this.http.post<Grade>(`${this.baseUrl}/grades/`, grade);
+    return this.http.post<Grade>(`${this.baseUrl}/grades/`, grade, { withCredentials: true });
   }
 
   updateGrade(id: number, grade: Partial<Grade>): Observable<Grade> {
-    return this.http.put<Grade>(`${this.baseUrl}/grades/${id}/`, grade);
+    return this.http.put<Grade>(`${this.baseUrl}/grades/${id}/`, grade, { withCredentials: true });
   }
 
   deleteGrade(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.baseUrl}/grades/${id}/`);
+    return this.http.delete<void>(`${this.baseUrl}/grades/${id}/`, { withCredentials: true });
   }
 
   getGradeTable(classroomId: number): Observable<GradeTable> {
-    return this.http.get<GradeTable>(`${this.baseUrl}/classes/${classroomId}/grade-table/`);
+    return this.http.get<GradeTable>(`${this.baseUrl}/classes/${classroomId}/grade-table/`, { withCredentials: true });
   }
 
   createBulkGrades(grades: Partial<Grade>[]): Observable<any> {
-    return this.http.post<any>(`${this.baseUrl}/grades/bulk-create/`, { grades });
+    return this.http.post<any>(`${this.baseUrl}/grades/bulk-create/`, { grades }, { withCredentials: true });
   }
 
   // Add method to get class students from microservice

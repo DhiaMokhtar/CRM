@@ -2,37 +2,6 @@ from django.db import models
 
 # Create your models here.
 
-class ClassRoom(models.Model):
-    name = models.CharField(max_length=100)
-    
-    def __str__(self):
-        return self.name
-
-class Lesson(models.Model):
-    title = models.CharField(max_length=200)
-    classroom = models.ForeignKey(ClassRoom, on_delete=models.CASCADE, related_name='lessons')
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return self.title
-
-class Chapter(models.Model):
-    title = models.CharField(max_length=200)
-    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='chapters')
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return self.title
-
-class Course(models.Model):
-    title = models.CharField(max_length=200)
-    chapter = models.ForeignKey(Chapter, on_delete=models.CASCADE, related_name='courses')
-    pdf = models.CharField(max_length=255)  # Store the file path
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return self.title
-
 class Message(models.Model):
     SENDER_TYPES = (
         ('administrator', 'Administrator'),
@@ -42,21 +11,15 @@ class Message(models.Model):
     )
     
     sender_type = models.CharField(max_length=15, choices=SENDER_TYPES)
-    sender_id = models.IntegerField()
+    sender_id = models.IntegerField()  # Make sure this is IntegerField, not CharField
     recipient_type = models.CharField(max_length=15, choices=SENDER_TYPES)
-    recipient_id = models.IntegerField()
+    recipient_id = models.IntegerField()  # Make sure this is IntegerField, not CharField
     content = models.TextField()
     is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
         ordering = ['-created_at']
-        indexes = [
-            models.Index(fields=['sender_type', 'sender_id']),
-            models.Index(fields=['recipient_type', 'recipient_id']),
-            models.Index(fields=['created_at']),
-            models.Index(fields=['is_read']),
-        ]
     
     def __str__(self):
         return f"Message from {self.sender_type}({self.sender_id}) to {self.recipient_type}({self.recipient_id})"

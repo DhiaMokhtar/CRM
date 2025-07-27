@@ -2,11 +2,14 @@ import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable, interval } from 'rxjs';
 import { ApiService, Conversation, Message, User } from '../api.service';
 import { AuthService } from './auth.service';
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class MessagingService {
+  private baseUrl = environment.messagingServiceUrl;  // Use messaging microservice
+
   private conversationsSubject = new BehaviorSubject<Conversation[]>([]);
   public conversations$ = this.conversationsSubject.asObservable();
   
@@ -25,7 +28,6 @@ export class MessagingService {
     private apiService: ApiService,
     private authService: AuthService
   ) {
-    // Start polling for new messages when user is logged in
     this.authService.currentUser$.subscribe(user => {
       if (user) {
         this.startPolling();
@@ -55,7 +57,6 @@ export class MessagingService {
     this.apiService.getConversationMessages(conversationId).subscribe({
       next: (messages) => {
         this.messagesSubject.next(messages);
-        // Find and update the selected conversation
         const conversations = this.conversationsSubject.value;
         const conversation = conversations.find(c => c.id === conversationId);
         if (conversation) {
@@ -68,30 +69,43 @@ export class MessagingService {
     });
   }
 
-  sendMessage(recipientType: string, recipientId: number, content: string): Observable<Message> {
-    const messageData = {
+  // For existing conversations
+  sendMessage(conversationId: number, content: string): Observable<any> {
+    // Get the current selected conversation to determine the recipient
+    const selectedConversation = this.selectedConversationSubject.value;
+    if (!selectedConversation) {
+      throw new Error('No conversation selected');
+    }
+
+    // Determine the recipient by checking which participant is NOT the current user
+    const currentUser = this.authService.getCurrentUser();
+    let recipientType: string;
+    let recipientId: number;
+
+    if (selectedConversation.participant1_type === currentUser?.user_type && 
+        selectedConversation.participant1_id === currentUser?.user_id) {
+      // Current user is participant1, so recipient is participant2
+      recipientType = selectedConversation.participant2_type;
+      recipientId = selectedConversation.participant2_id;
+    } else {
+      // Current user is participant2, so recipient is participant1
+      recipientType = selectedConversation.participant1_type;
+      recipientId = selectedConversation.participant1_id;
+    }
+
+    return this.apiService.sendMessage({
       recipient_type: recipientType,
       recipient_id: recipientId,
       content: content
-    };
+    });
+  }
 
-    return new Observable(observer => {
-      this.apiService.sendMessage(messageData).subscribe({
-        next: (message) => {
-          // Add the new message to the current messages
-          const currentMessages = this.messagesSubject.value;
-          this.messagesSubject.next([...currentMessages, message]);
-          
-          // Refresh conversations to update last message
-          this.loadConversations();
-          
-          observer.next(message);
-          observer.complete();
-        },
-        error: (error) => {
-          observer.error(error);
-        }
-      });
+  // For new conversations
+  createMessage(recipientType: string, recipientId: number, content: string): Observable<any> {
+    return this.apiService.sendMessage({
+      recipient_type: recipientType,
+      recipient_id: recipientId,
+      content: content
     });
   }
 
@@ -102,14 +116,11 @@ export class MessagingService {
   markMessageAsRead(messageId: number): void {
     this.apiService.markMessageAsRead(messageId).subscribe({
       next: () => {
-        // Update the message in the current messages list
         const currentMessages = this.messagesSubject.value;
         const updatedMessages = currentMessages.map(msg => 
           msg.id === messageId ? { ...msg, is_read: true } : msg
         );
         this.messagesSubject.next(updatedMessages);
-        
-        // Refresh conversations to update unread count
         this.loadConversations();
       },
       error: (error) => {
@@ -124,11 +135,8 @@ export class MessagingService {
   }
 
   private startPolling(): void {
-    // Poll for new messages every 5 seconds
     this.pollingInterval = interval(5000).subscribe(() => {
       this.loadConversations();
-      
-      // If a conversation is selected, refresh its messages
       const selectedConversation = this.selectedConversationSubject.value;
       if (selectedConversation) {
         this.loadConversationMessages(selectedConversation.id);

@@ -7,6 +7,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.db.models import Q
 from .models import Administrator, Teacher, Student, Parent, ClassRoom
 from .serializers import (
     AdministratorSerializer, TeacherSerializer, 
@@ -16,18 +17,58 @@ from .serializers import (
 class AdministratorViewSet(viewsets.ModelViewSet):
     queryset = Administrator.objects.all()
     serializer_class = AdministratorSerializer
+    
+    def get_queryset(self):
+        queryset = Administrator.objects.all()
+        search = self.request.query_params.get('search', None)
+        if search is not None:
+            queryset = queryset.filter(
+                Q(username__icontains=search) | 
+                Q(email__icontains=search)
+            )
+        return queryset
 
 class TeacherViewSet(viewsets.ModelViewSet):
     queryset = Teacher.objects.all()
     serializer_class = TeacherSerializer
+    
+    def get_queryset(self):
+        queryset = Teacher.objects.all()
+        search = self.request.query_params.get('search', None)
+        if search is not None:
+            queryset = queryset.filter(
+                Q(username__icontains=search) | 
+                Q(email__icontains=search)
+            )
+        return queryset
 
 class StudentViewSet(viewsets.ModelViewSet):
     queryset = Student.objects.all()
     serializer_class = StudentSerializer
+    
+    def get_queryset(self):
+        queryset = Student.objects.all()
+        search = self.request.query_params.get('search', None)
+        if search is not None:
+            queryset = queryset.filter(
+                Q(username__icontains=search) | 
+                Q(email__icontains=search)
+            )
+        return queryset
 
 class ParentViewSet(viewsets.ModelViewSet):
     queryset = Parent.objects.all()
     serializer_class = ParentSerializer
+    
+    def get_queryset(self):
+        queryset = Parent.objects.all()
+        search = self.request.query_params.get('search', None)
+        if search is not None:
+            queryset = queryset.filter(
+                Q(username__icontains=search) | 
+                Q(email__icontains=search)
+            )
+        return queryset
 
 class ClassRoomViewSet(viewsets.ModelViewSet):
     queryset = ClassRoom.objects.all()

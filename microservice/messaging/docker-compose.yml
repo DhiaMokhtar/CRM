@@ -1,21 +1,21 @@
 version: '3.8'
 
 services:
-  mysql_users:
+  mysql_messaging:
     image: mysql:8.0
-    container_name: mysql_users
+    container_name: mysql_messaging
     environment:
       MYSQL_ROOT_PASSWORD: password
-      MYSQL_DATABASE: users_db
+      MYSQL_DATABASE: messaging_db
       MYSQL_USER: crm_user
       MYSQL_PASSWORD: crm_password
     ports:
-      - "3307:3306"
+      - "3309:3306"
     volumes:
-      - mysql_users_data:/var/lib/mysql
+      - mysql_messaging_data:/var/lib/mysql
     networks:
-      - users_network
-      - crm_network  # Add shared network
+      - messaging_network
+      - crm_network
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-ppassword"]
       timeout: 20s
@@ -23,33 +23,36 @@ services:
       interval: 10s
       start_period: 40s
 
-  users_service:
+  messaging_service:
     build: .
-    container_name: users_service
+    container_name: messaging_service
     environment:
+      # Use the SAME secret key as users microservice
       - SECRET_KEY=django-insecure-1+e#)73aknts5v9id(oqr#*dg2_pqzk86h-zrq^5^15s_v&&1%
       - DEBUG=True
-      - DB_NAME=users_db
+      - DB_NAME=messaging_db
       - DB_USER=root
       - DB_PASSWORD=password
-      - DB_HOST=mysql_users
+      - DB_HOST=mysql_messaging
       - DB_PORT=3306
     ports:
-      - "8001:8000"
-    depends_on:
-      mysql_users:
-        condition: service_healthy
+      - "8003:8000"
     volumes:
       - ../../localhost.pem:/app/ssl/localhost.pem
       - ../../localhost-key.pem:/app/ssl/localhost-key.pem
+    depends_on:
+      mysql_messaging:
+        condition: service_healthy
     networks:
-      - users_network
-      - crm_network  # Add shared network
+      - messaging_network
+      - crm_network
+    external_links:
+      - users_service:users_service
     restart: unless-stopped
     command: >
       sh -c "
         echo 'Waiting for MySQL to be ready...' &&
-        while ! mysqladmin ping -h mysql_users -u root -ppassword --silent; do
+        while ! mysqladmin ping -h mysql_messaging -u root -ppassword --silent; do
           echo 'Waiting for MySQL...' &&
           sleep 2
         done &&
@@ -58,15 +61,17 @@ services:
         python manage.py makemigrations &&
         echo 'Running migrations...' &&
         python manage.py migrate &&
+        echo 'Checking SSL certificates...' &&
+        ls -la /app/ssl/ &&
         echo 'Starting Django server with HTTPS...' &&
         python manage.py runsslserver 0.0.0.0:8000 --certificate /app/ssl/localhost.pem --key /app/ssl/localhost-key.pem
       "
 
 volumes:
-  mysql_users_data:
+  mysql_messaging_data:
 
 networks:
-  users_network:
+  messaging_network:
     driver: bridge
-  crm_network:  # Add shared network
+  crm_network:
     external: true

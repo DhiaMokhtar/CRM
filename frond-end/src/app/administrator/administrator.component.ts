@@ -1,8 +1,9 @@
 import { Component, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, Validators,FormControl } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, FormControl } from '@angular/forms';
 import { ApiService, Class, Student, Teacher, Parent, Subject, GradeTable, Grade } from '../api.service';
 import { Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
+
 @Component({
   selector: 'app-administrator',
   standalone: false,
@@ -12,16 +13,15 @@ import { AuthService } from '../services/auth.service';
 export class AdministratorComponent implements OnInit {
   teacherForm: FormGroup;
   studentForm: FormGroup;
-  parentForm: FormGroup; // Add parent form
+  parentForm: FormGroup;
   teachers: Teacher[] = [];
   students: Student[] = [];
-  parents: Parent[] = []; // Add parents array
+  parents: Parent[] = [];
   classes: Class[] = [];
   errorMessage: string | null = null;
   selectedTeacher: Teacher | null = null;
   selectedStudent: Student | null = null;
-  selectedParent: Parent | null = null; // Add selected parent
-  // Add new properties for grading
+  selectedParent: Parent | null = null;
   subjects: Subject[] = [];
   selectedClassForGrading: Class | null = null;
   gradeTable: GradeTable | null = null;
@@ -29,17 +29,20 @@ export class AdministratorComponent implements OnInit {
   newSubjectName = '';
   editingGrades: { [key: string]: number } = {};
   
-  // Update activeSection type
   activeSection: 'addTeacher' | 'addStudent' | 'addParent' | 
                 'listTeachers' | 'listStudents' | 'listParents' | 
                 'editStudent' | 'editTeacher' | 'editParent' | 'grading' = 'addTeacher';
 
-  // Add to your class properties
   studentSearch = new FormControl('');
   filteredStudents: Student[] = [];
+  selectedStudents: Student[] = [];
   
-  // Update constructor
-  constructor(private fb: FormBuilder, private router: Router, private apiService: ApiService,private authService: AuthService,) {
+  constructor(
+    private fb: FormBuilder, 
+    private router: Router, 
+    private apiService: ApiService,
+    private authService: AuthService
+  ) {
     this.teacherForm = this.fb.group({
       username: ['', [Validators.required, Validators.minLength(3)]],
       password: ['', [Validators.required, Validators.minLength(6)]],
@@ -54,15 +57,13 @@ export class AdministratorComponent implements OnInit {
       class_id: ['', Validators.required]
     });
 
-    // Add parent form initialization
     this.parentForm = this.fb.group({
       username: ['', [Validators.required, Validators.minLength(3)]],
       password: ['', [Validators.required, Validators.minLength(6)]],
       email: ['', [Validators.required, Validators.email]],
-      student_ids: [[]]  // Add this form control
+      student_ids: [[]]
     });
   
-    // Add search filter subscription
     this.studentSearch.valueChanges.subscribe(searchTerm => {
       if (searchTerm) {
         this.filteredStudents = this.students.filter(student =>
@@ -75,11 +76,13 @@ export class AdministratorComponent implements OnInit {
     });
   }
 
-  // Update setActiveSection to include parent sections
   setActiveSection(section: typeof this.activeSection) {
     this.activeSection = section;
     if (section === 'listParents') {
       this.loadParents();
+    }
+    if (section === 'grading') {
+      this.loadClassesForGrading();
     }
   }
 
@@ -87,17 +90,17 @@ export class AdministratorComponent implements OnInit {
     this.loadTeachers();
     this.loadStudents();
     this.loadClasses();
-    this.loadParents(); // Add loading parents
+    this.loadParents();
     this.filteredStudents = this.students;
   }
 
   loadTeachers() {
     this.apiService.getTeachers().subscribe({
-      next: (teachers) => {
+      next: (teachers: Teacher[]) => {
         this.teachers = teachers;
         this.errorMessage = null;
       },
-      error: (err) => {
+      error: (err: any) => {
         this.errorMessage = 'Failed to load teachers. Please check the server.';
         console.error('Error fetching teachers:', err);
       }
@@ -106,11 +109,11 @@ export class AdministratorComponent implements OnInit {
 
   loadStudents() {
     this.apiService.getStudents().subscribe({
-      next: (students) => {
+      next: (students: Student[]) => {
         this.students = students;
         this.errorMessage = null;
       },
-      error: (err) => {
+      error: (err: any) => {
         this.errorMessage = 'Failed to load students. Please check the server.';
         console.error('Error fetching students:', err);
       }
@@ -119,11 +122,11 @@ export class AdministratorComponent implements OnInit {
 
   loadClasses() {
     this.apiService.getClasses().subscribe({
-      next: (classes) => {
+      next: (classes: Class[]) => {
         this.classes = classes;
         this.errorMessage = null;
       },
-      error: (err) => {
+      error: (err: any) => {
         this.errorMessage = 'Failed to load classes. Please check the server.';
         console.error('Error fetching classes:', err);
       }
@@ -131,36 +134,36 @@ export class AdministratorComponent implements OnInit {
   }
 
   addTeacher() {
-  if (this.teacherForm.valid) {
-    const teacherData = {
-      username: this.teacherForm.value.username,
-      password: this.teacherForm.value.password,
-      email: this.teacherForm.value.email,
-      class_ids: this.teacherForm.value.class_ids.map((id: string) => parseInt(id, 10)) // Convert to numbers
-    };
-    this.apiService.addTeacher(this.teacherForm.value).subscribe({
-      next: () => {
-        this.teacherForm.reset();
-        this.loadTeachers();
-        this.errorMessage = null;
-      },
-      error: (err) => {
-        this.errorMessage = 'Failed to add teacher: ' + (err.error?.detail || JSON.stringify(err.error));
-        console.error('Error adding teacher:', err);
-      }
-    });
+    if (this.teacherForm.valid) {
+      const teacherData = {
+        username: this.teacherForm.value.username,
+        password: this.teacherForm.value.password,
+        email: this.teacherForm.value.email,
+        class_ids: this.teacherForm.value.class_ids.map((id: string) => parseInt(id, 10))
+      };
+      this.apiService.addTeacher(teacherData).subscribe({
+        next: (teacher: Teacher) => {
+          this.teacherForm.reset();
+          this.loadTeachers();
+          this.errorMessage = null;
+        },
+        error: (err: any) => {
+          this.errorMessage = 'Failed to add teacher: ' + (err.error?.detail || JSON.stringify(err.error));
+          console.error('Error adding teacher:', err);
+        }
+      });
+    }
   }
-}
 
   addStudent() {
     if (this.studentForm.valid) {
       this.apiService.addStudent(this.studentForm.value).subscribe({
-        next: () => {
+        next: (student: Student) => {
           this.studentForm.reset();
           this.loadStudents();
           this.errorMessage = null;
         },
-        error: (err) => {
+        error: (err: any) => {
           this.errorMessage = 'Failed to add student. Please try again.';
           console.error('Error adding student:', err);
         }
@@ -186,14 +189,14 @@ export class AdministratorComponent implements OnInit {
         ...this.studentForm.value
       };
       this.apiService.updateStudent(updatedStudent).subscribe({
-        next: () => {
+        next: (student: Student) => {
           this.studentForm.reset();
           this.selectedStudent = null;
           this.loadStudents();
           this.setActiveSection('listStudents');
           this.errorMessage = null;
         },
-        error: (err) => {
+        error: (err: any) => {
           this.errorMessage = 'Failed to update student. Please try again.';
           console.error('Error updating student:', err);
         }
@@ -201,7 +204,6 @@ export class AdministratorComponent implements OnInit {
     }
   }
 
-  // Add these new methods
   editTeacher(teacher: Teacher) {
     this.selectedTeacher = teacher;
     this.teacherForm.patchValue({
@@ -220,14 +222,14 @@ export class AdministratorComponent implements OnInit {
         class_ids: this.teacherForm.value.class_ids.map((id: string) => parseInt(id, 10))
       };
       this.apiService.updateTeacher(updatedTeacher).subscribe({
-        next: () => {
+        next: (teacher: Teacher) => {
           this.teacherForm.reset();
           this.selectedTeacher = null;
           this.loadTeachers();
           this.setActiveSection('listTeachers');
           this.errorMessage = null;
         },
-        error: (err) => {
+        error: (err: any) => {
           this.errorMessage = 'Failed to update teacher. Please try again.';
           console.error('Error updating teacher:', err);
         }
@@ -235,21 +237,18 @@ export class AdministratorComponent implements OnInit {
     }
   }
 
-  // Update setActiveSection method
-  
   logout() {
     this.authService.logout();
     this.router.navigate(['/auth']);
   }
 
-  // Add parent-related methods
   loadParents() {
     this.apiService.getParents().subscribe({
-      next: (parents) => {
+      next: (parents: Parent[]) => {
         this.parents = parents;
         this.errorMessage = null;
       },
-      error: (err) => {
+      error: (err: any) => {
         this.errorMessage = 'Failed to load parents. Please check the server.';
         console.error('Error fetching parents:', err);
       }
@@ -259,12 +258,12 @@ export class AdministratorComponent implements OnInit {
   addParent() {
     if (this.parentForm.valid) {
       this.apiService.addParent(this.parentForm.value).subscribe({
-        next: () => {
+        next: (parent: Parent) => {
           this.parentForm.reset();
           this.loadParents();
           this.errorMessage = null;
         },
-        error: (err) => {
+        error: (err: any) => {
           this.errorMessage = 'Failed to add parent: ' + (err.error?.detail || JSON.stringify(err.error));
           console.error('Error adding parent:', err);
         }
@@ -272,10 +271,6 @@ export class AdministratorComponent implements OnInit {
     }
   }
 
-  // Add these properties to your component class
-  selectedStudents: Student[] = [];
-  
-  // Add these methods
   toggleStudent(student: Student) {
     const index = this.selectedStudents.findIndex(s => s.id === student.id);
     if (index === -1) {
@@ -297,15 +292,13 @@ export class AdministratorComponent implements OnInit {
   isSelected(student: Student): boolean {
     return this.selectedStudents.some(s => s.id === student.id);
   }
-  
-  // Update your editParent method to include
+
   editParent(parent: Parent) {
     this.selectedParent = parent;
     this.parentForm.patchValue({
       username: parent.username,
       email: parent.email
     });
-    // Initialize selected students if they exist
     if (parent.students) {
       this.selectedStudents = this.students.filter(student => 
         parent.students?.includes(student.id)
@@ -324,15 +317,15 @@ export class AdministratorComponent implements OnInit {
         students: this.selectedStudents.map(student => student.id)
       };
       this.apiService.updateParent(updatedParent).subscribe({
-        next: () => {
+        next: (parent: Parent) => {
           this.parentForm.reset();
           this.selectedParent = null;
-          this.selectedStudents = []; // Reset selected students
+          this.selectedStudents = [];
           this.loadParents();
           this.setActiveSection('listParents');
           this.errorMessage = null;
         },
-        error: (err) => {
+        error: (err: any) => {
           this.errorMessage = 'Failed to update parent. Please try again.';
           console.error('Error updating parent:', err);
         }
@@ -347,21 +340,20 @@ export class AdministratorComponent implements OnInit {
           this.loadParents();
           this.errorMessage = null;
         },
-        error: (err) => {
+        error: (err: any) => {
           this.errorMessage = 'Failed to delete parent';
           console.error('Error deleting parent:', err);
         }
       });
     }
   }
-  
 
   loadClassesForGrading() {
     this.apiService.getClasses().subscribe({
-      next: (classes) => {
+      next: (classes: Class[]) => {
         this.classes = classes;
       },
-      error: (err) => {
+      error: (err: any) => {
         this.errorMessage = 'Failed to load classes';
         console.error('Error:', err);
       }
@@ -376,11 +368,11 @@ export class AdministratorComponent implements OnInit {
 
   loadGradeTable(classroomId: number) {
     this.apiService.getGradeTable(classroomId).subscribe({
-      next: (gradeTable) => {
+      next: (gradeTable: GradeTable) => {
         this.gradeTable = gradeTable;
         this.isGradingMode = true;
       },
-      error: (err) => {
+      error: (err: any) => {
         this.errorMessage = 'Failed to load grade table';
         console.error('Error:', err);
       }
@@ -389,10 +381,10 @@ export class AdministratorComponent implements OnInit {
 
   loadSubjectsForClass(classroomId: number) {
     this.apiService.getSubjects(classroomId).subscribe({
-      next: (subjects) => {
+      next: (subjects: Subject[]) => {
         this.subjects = subjects;
       },
-      error: (err) => {
+      error: (err: any) => {
         console.error('Error loading subjects:', err);
       }
     });
@@ -409,12 +401,12 @@ export class AdministratorComponent implements OnInit {
     };
 
     this.apiService.createSubject(subject).subscribe({
-      next: (newSubject) => {
+      next: (newSubject: Subject) => {
         this.subjects.push(newSubject);
         this.newSubjectName = '';
         this.loadGradeTable(this.selectedClassForGrading!.id);
       },
-      error: (err) => {
+      error: (err: any) => {
         this.errorMessage = 'Failed to add subject';
         console.error('Error:', err);
       }
@@ -444,12 +436,12 @@ export class AdministratorComponent implements OnInit {
     };
 
     this.apiService.createGrade(grade).subscribe({
-      next: (newGrade) => {
+      next: (newGrade: Grade) => {
         delete this.editingGrades[key];
         this.loadGradeTable(this.selectedClassForGrading!.id);
         this.errorMessage = null;
       },
-      error: (err) => {
+      error: (err: any) => {
         this.errorMessage = 'Failed to save grade';
         console.error('Error:', err);
       }

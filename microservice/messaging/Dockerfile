@@ -2,7 +2,7 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies including MySQL client
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     default-libmysqlclient-dev \
     default-mysql-client \
