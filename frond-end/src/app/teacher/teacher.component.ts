@@ -132,16 +132,14 @@ export class TeacherComponent implements OnInit {
   }
   
 
-  // Fix loadTeacherInfo to use HTTPS
+  // Fix loadTeacherInfo to use users microservice
   loadTeacherInfo() {
     if (this.userId) {
-      // Use HTTPS for users microservice endpoint
       this.http.get(`https://localhost:8001/api/teachers/${this.userId}/`).subscribe({
         next: (response: any) => {
           this.teacherForm.patchValue({
             username: response.username,
-            email: response.email,
-            password: ''
+            email: response.email
           });
         },
         error: (error) => {
@@ -151,10 +149,9 @@ export class TeacherComponent implements OnInit {
     }
   }
 
-  // Fix loadTeacherClasses to use HTTPS
+  // Fix loadTeacherClasses to use users microservice
   loadTeacherClasses() {
     if (this.userId) {
-      // Use HTTPS for users microservice endpoint
       this.http.get(`https://localhost:8001/api/teachers/${this.userId}/`).subscribe({
         next: (response: any) => {
           this.classes = response.classes || [];
@@ -166,7 +163,7 @@ export class TeacherComponent implements OnInit {
     }
   }
 
-  // Fix updateInfo to use HTTPS
+  // Fix updateInfo to use users microservice
   updateInfo() {
     if (this.teacherForm.valid && this.userId) {
       const updateData = {
@@ -175,7 +172,6 @@ export class TeacherComponent implements OnInit {
         class_ids: this.classes.map(c => c.id)
       };
 
-      // Use HTTPS for users microservice endpoint
       this.http.put(`https://localhost:8001/api/teachers/${this.userId}/`, updateData).subscribe({
         next: (response: any) => {
           alert('Information updated successfully');
@@ -350,9 +346,10 @@ export class TeacherComponent implements OnInit {
     }
   }
 
-  // Fix loadClassStudents to use HTTPS
+  // Fix loadClassStudents to use users microservice
   loadClassStudents(classId: number) {
-    this.http.get(`https://localhost:8000/api/classes/${classId}/students/`).subscribe({
+    // Use users microservice endpoint
+    this.http.get(`https://localhost:8001/api/classes/${classId}/students/`).subscribe({
       next: (response: any) => {
         this.classStudents = response;
       },
@@ -360,41 +357,39 @@ export class TeacherComponent implements OnInit {
         console.error('Error loading class students:', error);
       }
     });
-
   }
   // Update the loadClassHomework method to include submissions
   loadClassHomework(classId: number) {
-    this.http.get<Homework[]>(`https://localhost:8000/api/homeworks/?classroom=${classId}`)
-      .subscribe({
-        next: (homework) => {
-          this.classHomework = homework;
-          
-          // For each homework, load its submissions
-          this.classHomework.forEach(hw => {
-            this.loadHomeworkSubmissions(hw.id);
-          });
-        },
-        error: (error) => {
-          console.error('Error loading homework:', error);
-        }
-      });
+    // Use homework microservice instead of SMS backend
+    this.apiService.getHomework({ classroom: classId }).subscribe({
+      next: (homework) => {
+        this.classHomework = homework;
+        
+        // For each homework, load its submissions
+        this.classHomework.forEach(hw => {
+          this.loadHomeworkSubmissions(hw.id);
+        });
+      },
+      error: (error) => {
+        console.error('Error loading homework:', error);
+      }
+    });
   }
   
-  // Fix loadHomeworkSubmissions to use HTTPS
+  // Update loadHomeworkSubmissions to use homework microservice
   loadHomeworkSubmissions(homeworkId: number) {
-    this.http.get<HomeworkSubmission[]>(`https://localhost:8000/api/homework-submissions/?homework=${homeworkId}`)
-      .subscribe({
-        next: (submissions) => {
-          // Find the homework and attach its submissions
-          const homework = this.classHomework.find(hw => hw.id === homeworkId);
-          if (homework) {
-            homework.submissions = submissions;
-          }
-        },
-        error: (error) => {
-          console.error('Error loading homework submissions:', error);
+    this.apiService.getHomeworkSubmissions(homeworkId).subscribe({
+      next: (submissions) => {
+        // Find the homework and attach its submissions
+        const homework = this.classHomework.find(hw => hw.id === homeworkId);
+        if (homework) {
+          homework.submissions = submissions;
         }
-      });
+      },
+      error: (error) => {
+        console.error('Error loading homework submissions:', error);
+      }
+    });
   }
   
   // Add method to view submission file
@@ -407,37 +402,36 @@ export class TeacherComponent implements OnInit {
     if (this.homeworkForm.valid && this.selectedClass && this.userId) {
       const homeworkData = {
         ...this.homeworkForm.value,
-        classroom: this.selectedClass.id,
-        teacher: this.userId
+        classroom_id: this.selectedClass.id,  // Note: use classroom_id for homework microservice
+        teacher_id: this.userId
       };
       
-      this.http.post('https://localhost:8000/api/homeworks/', homeworkData)
-        .subscribe({
-          next: (response: any) => {
-            this.loadClassHomework(this.selectedClass.id);
-            this.homeworkForm.reset();
-          },
-          error: (error) => {
-            console.error('Error adding homework:', error);
-            alert('Failed to add homework. Please try again.');
-          }
-        });
+      this.apiService.createHomework(homeworkData).subscribe({
+        next: (response: any) => {
+          this.loadClassHomework(this.selectedClass.id);
+          this.homeworkForm.reset();
+          this.showAddHomeworkForm = false;
+        },
+        error: (error) => {
+          console.error('Error adding homework:', error);
+          alert('Failed to add homework. Please try again.');
+        }
+      });
     }
   }
   
-  // Fix deleteHomework to use HTTPS
+  // Update deleteHomework to use homework microservice
   deleteHomework(homeworkId: number) {
     if (confirm('Are you sure you want to delete this homework assignment?')) {
-      this.http.delete(`https://localhost:8000/api/homeworks/${homeworkId}/`)
-        .subscribe({
-          next: () => {
-            this.loadClassHomework(this.selectedClass.id);
-          },
-          error: (error) => {
-            console.error('Error deleting homework:', error);
-            alert('Failed to delete homework. Please try again.');
-          }
-        });
+      this.apiService.deleteHomework(homeworkId).subscribe({
+        next: () => {
+          this.loadClassHomework(this.selectedClass.id);
+        },
+        error: (error) => {
+          console.error('Error deleting homework:', error);
+          alert('Failed to delete homework. Please try again.');
+        }
+      });
     }
   }
   

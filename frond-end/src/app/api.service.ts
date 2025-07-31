@@ -99,9 +99,15 @@ export interface HomeworkSubmission {
   id: number;
   homework: number;
   student: number;
+  student_id: number; // Add this for consistency
+  student_name: string; // Add this missing property
   file: string;
   submission_date: string;
   comments?: string;
+  grade?: number; // Add for grading
+  graded_at?: string; // Add for grading timestamp
+  graded_by?: number; // Add for who graded it
+  graded_by_name?: string; // Add for grader name
 }
 
 export interface Homework {
@@ -109,13 +115,20 @@ export interface Homework {
   title: string;
   description: string;
   classroom: number;
+  classroom_id: number; // Add for consistency
   teacher: number;
+  teacher_id: number; // Add for consistency
   teacher_name?: string;
+  classroom_name?: string; // Add for display
   due_date: string;
   created_at: string;
+  updated_at?: string;
   submission?: HomeworkSubmission;
+  submissions?: HomeworkSubmission[]; // Add for teacher view
   selectedFile?: File;
   comments?: string;
+  showSubmissions?: boolean; // Add for UI state
+  submission_count?: number; // Add for display
 }
 
 export interface User {
@@ -168,7 +181,7 @@ export class ApiService {
   private usersServiceUrl = environment.usersServiceUrl;
   private coursesServiceUrl = environment.coursesServiceUrl;
   private messagingServiceUrl = environment.messagingServiceUrl;
-  private classUrl = `${this.usersServiceUrl}/classes/`;
+  private homeworkServiceUrl = environment.homeworkServiceUrl;  // Add this
 
   constructor(private http: HttpClient) {}
 
@@ -203,6 +216,7 @@ export class ApiService {
   }
 
   // User management methods (use users microservice)
+  // Teacher methods - use users microservice
   getTeachers(): Observable<Teacher[]> {
     return this.http.get<Teacher[]>(`${this.usersServiceUrl}/teachers/`, { withCredentials: true });
   }
@@ -219,6 +233,7 @@ export class ApiService {
     return this.http.delete<void>(`${this.usersServiceUrl}/teachers/${id}/`, { withCredentials: true });
   }
 
+  // Student methods - use users microservice  
   getStudents(): Observable<Student[]> {
     return this.http.get<Student[]>(`${this.usersServiceUrl}/students/`, { withCredentials: true });
   }
@@ -235,6 +250,12 @@ export class ApiService {
     return this.http.delete<void>(`${this.usersServiceUrl}/students/${id}/`, { withCredentials: true });
   }
 
+  // Classes methods - use users microservice
+  getClasses(): Observable<Class[]> {
+    return this.http.get<Class[]>(`${this.usersServiceUrl}/classes/`, { withCredentials: true });
+  }
+
+  // Parent methods - use users microservice
   getParents(): Observable<Parent[]> {
     return this.http.get<Parent[]>(`${this.usersServiceUrl}/parents/`, { withCredentials: true });
   }
@@ -249,10 +270,6 @@ export class ApiService {
 
   deleteParent(id: number): Observable<void> {
     return this.http.delete<void>(`${this.usersServiceUrl}/parents/${id}/`, { withCredentials: true });
-  }
-
-  getClasses(): Observable<Class[]> {
-    return this.http.get<Class[]>(this.classUrl, { withCredentials: true });
   }
 
   // Add calendar/schedule methods
@@ -391,60 +408,45 @@ export class ApiService {
     return this.http.get<any>(`${this.coursesServiceUrl}/students/${studentId}/courses/`, { withCredentials: true });
   }
 
-  // Homework methods (main backend)
+  // Homework methods (use homework microservice)
   getHomework(params?: any): Observable<Homework[]> {
     const queryParams = params ? new URLSearchParams(params).toString() : '';
-    const url = queryParams ? `${this.baseUrl}/homework/?${queryParams}` : `${this.baseUrl}/homework/`;
+    const url = queryParams ? `${this.homeworkServiceUrl}/homework/?${queryParams}` : `${this.homeworkServiceUrl}/homework/`;
     return this.http.get<Homework[]>(url, { withCredentials: true });
   }
 
   createHomework(homework: Partial<Homework>): Observable<Homework> {
-    return this.http.post<Homework>(`${this.baseUrl}/homework/`, homework, { withCredentials: true });
+    return this.http.post<Homework>(`${this.homeworkServiceUrl}/homework/`, homework, { withCredentials: true });
   }
 
   updateHomework(id: number, homework: Partial<Homework>): Observable<Homework> {
-    return this.http.put<Homework>(`${this.baseUrl}/homework/${id}/`, homework, { withCredentials: true });
+    return this.http.put<Homework>(`${this.homeworkServiceUrl}/homework/${id}/`, homework, { withCredentials: true });
   }
 
   deleteHomework(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.baseUrl}/homework/${id}/`, { withCredentials: true });
+    return this.http.delete<void>(`${this.homeworkServiceUrl}/homework/${id}/`, { withCredentials: true });
   }
 
-  // Homework submission methods (main backend)
+  // Homework submission methods
   submitHomework(formData: FormData): Observable<HomeworkSubmission> {
-    return this.http.post<HomeworkSubmission>(`${this.baseUrl}/homework-submissions/`, formData, { withCredentials: true });
+    return this.http.post<HomeworkSubmission>(`${this.homeworkServiceUrl}/homework-submissions/`, formData, { withCredentials: true });
   }
 
   getHomeworkSubmissions(homeworkId?: number, studentId?: number): Observable<HomeworkSubmission[]> {
     let params = '';
     if (homeworkId) params += `homework=${homeworkId}`;
     if (studentId) params += `${params ? '&' : ''}student=${studentId}`;
-    const url = params ? `${this.baseUrl}/homework-submissions/?${params}` : `${this.baseUrl}/homework-submissions/`;
+    const url = params ? `${this.homeworkServiceUrl}/homework-submissions/?${params}` : `${this.homeworkServiceUrl}/homework-submissions/`;
     return this.http.get<HomeworkSubmission[]>(url, { withCredentials: true });
   }
 
   updateHomeworkSubmission(id: number, submission: Partial<HomeworkSubmission>): Observable<HomeworkSubmission> {
-    return this.http.put<HomeworkSubmission>(`${this.baseUrl}/homework-submissions/${id}/`, submission, { withCredentials: true });
+    return this.http.put<HomeworkSubmission>(`${this.homeworkServiceUrl}/homework-submissions/${id}/`, submission, { withCredentials: true });
   }
 
-  // Class management methods (using microservice)
-  createClass(classroom: Partial<Class>): Observable<Class> {
-    return this.http.post<Class>(this.classUrl, classroom, { withCredentials: true });
-  }
-
-  updateClass(id: number, classroom: Partial<Class>): Observable<Class> {
-    return this.http.put<Class>(`${this.classUrl}${id}/`, classroom, { withCredentials: true });
-  }
-
-  deleteClass(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.classUrl}${id}/`, { withCredentials: true });
-  }
-
-  // File upload helper
-  uploadFile(file: File, endpoint: string): Observable<any> {
-    const formData = new FormData();
-    formData.append('file', file);
-    return this.http.post(`${this.baseUrl}/${endpoint}/`, formData, { withCredentials: true });
+  // Get student homework with submissions
+  getStudentHomework(studentId: number): Observable<Homework[]> {
+    return this.http.get<Homework[]>(`${this.homeworkServiceUrl}/students/${studentId}/homework/`, { withCredentials: true });
   }
 }
 

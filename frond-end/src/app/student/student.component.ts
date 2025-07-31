@@ -117,12 +117,27 @@ onFileSelected(event: any, homeworkId: number) {
   }
 }
 
-// Method to submit homework
+// Update loadHomeworkAssignments to use homework microservice
+loadHomeworkAssignments() {
+  if (this.userId) {
+    this.apiService.getStudentHomework(parseInt(this.userId)).subscribe({
+      next: (homework) => {
+        this.homeworkAssignments = homework;
+      },
+      error: (error) => {
+        console.error('Error loading homework assignments:', error);
+      }
+    });
+  }
+}
+
+// Update submitHomework to use homework microservice
 submitHomework(homework: Homework) {
   if ((homework.selectedFile || homework.submission) && this.userId) {
     const formData = new FormData();
     formData.append('homework', homework.id.toString());
-    formData.append('student', this.userId);
+    formData.append('student_id', this.userId);  // Note: use student_id for homework microservice
+    
     if (homework.selectedFile) {
       formData.append('file', homework.selectedFile);
     }
@@ -131,77 +146,32 @@ submitHomework(homework: Homework) {
     }
 
     if (homework.submission) {
-      // Update existing submission (PATCH or PUT)
-      this.http.put(`http://localhost:8000/api/homework-submissions/${homework.submission.id}/`, formData)
-        .subscribe({
-          next: () => {
-            alert('Homework updated successfully!');
-            this.loadHomeworkAssignments();
-          },
-          error: (error) => {
-            console.error('Error updating homework:', error);
-            alert('Failed to update homework. Please try again.');
-          }
-        });
+      // Update existing submission
+      this.apiService.updateHomeworkSubmission(homework.submission.id, Object.fromEntries(formData)).subscribe({
+        next: () => {
+          alert('Homework updated successfully!');
+          this.loadHomeworkAssignments();
+        },
+        error: (error) => {
+          console.error('Error updating homework:', error);
+          alert('Failed to update homework. Please try again.');
+        }
+      });
     } else {
-      // New submission (POST)
-      this.http.post('http://localhost:8000/api/homework-submissions/', formData)
-        .subscribe({
-          next: () => {
-            alert('Homework submitted successfully!');
-            this.loadHomeworkAssignments();
-          },
-          error: (error) => {
-            console.error('Error submitting homework:', error);
-            alert('Failed to submit homework. Please try again.');
-          }
-        });
+      // New submission
+      this.apiService.submitHomework(formData).subscribe({
+        next: () => {
+          alert('Homework submitted successfully!');
+          this.loadHomeworkAssignments();
+        },
+        error: (error) => {
+          console.error('Error submitting homework:', error);
+          alert('Failed to submit homework. Please try again.');
+        }
+      });
     }
   }
 }
-
-// Update the loadHomeworkAssignments method to also load submissions
-loadHomeworkAssignments() {
-  if (this.userId) {
-    this.http.get<Homework[]>(`http://localhost:8000/api/homeworks/?student=${this.userId}`)
-      .subscribe({
-        next: (homework) => {
-          this.homeworkAssignments = homework;
-          
-          // Get teacher names for each homework
-          this.homeworkAssignments.forEach(hw => {
-            this.http.get(`http://localhost:8000/api/teachers/${hw.teacher}/`)
-              .subscribe({
-                next: (teacher: any) => {
-                  hw.teacher_name = teacher.username;
-                },
-                error: (error) => {
-                  console.error('Error loading teacher info:', error);
-                }
-              });
-              
-            // Check if student has already submitted this homework
-            this.http.get(`http://localhost:8000/api/homework-submissions/?homework=${hw.id}&student=${this.userId}`)
-              .subscribe({
-                next: (submissions: any) => {
-                  if (submissions.length > 0) {
-                    hw.submission = submissions[0];
-                  }
-                },
-                error: (error) => {
-                  console.error('Error loading homework submissions:', error);
-                }
-              });
-          });
-        },
-        error: (error) => {
-          console.error('Error loading homework assignments:', error);
-        }
-      });
-  }
-}
-
-
 
   // Add this method to check if homework is overdue
   isOverdue(dueDate: string): boolean {

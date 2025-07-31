@@ -158,43 +158,16 @@ export class ParentComponent implements OnInit {
       });
   }
 
+  // Update loadChildHomework to use homework microservice
   loadChildHomework(childId: number) {
-    this.http.get<Homework[]>(`http://localhost:8000/api/homeworks/?student=${childId}`)
-      .subscribe({
-        next: (homework) => {
-          this.childHomework = homework;
-          
-          // Get teacher names and check for submissions
-          this.childHomework.forEach(hw => {
-            // Get teacher name
-            this.http.get(`http://localhost:8000/api/teachers/${hw.teacher}/`)
-              .subscribe({
-                next: (teacher: any) => {
-                  hw.teacher_name = teacher.username;
-                },
-                error: (error) => {
-                  console.error('Error loading teacher info:', error);
-                }
-              });
-              
-            // Check for homework submission
-            this.http.get(`http://localhost:8000/api/homework-submissions/?homework=${hw.id}&student=${childId}`)
-              .subscribe({
-                next: (submissions: any) => {
-                  if (submissions.length > 0) {
-                    hw.submission = submissions[0];
-                  }
-                },
-                error: (error) => {
-                  console.error('Error loading homework submissions:', error);
-                }
-              });
-          });
-        },
-        error: (error) => {
-          console.error('Error loading homework assignments:', error);
-        }
-      });
+    this.apiService.getStudentHomework(childId).subscribe({
+      next: (homework) => {
+        this.childHomework = homework;
+      },
+      error: (error) => {
+        console.error('Error loading homework assignments:', error);
+      }
+    });
   }
 
   // Update the existing loadChildCourses method
