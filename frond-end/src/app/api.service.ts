@@ -146,16 +146,19 @@ export interface User {
 export interface Subject {
   id: number;
   name: string;
-  classroom: number;
+  classroom: number;        // Keep this for backward compatibility
+  classroom_id: number;     // Add this for courses microservice
   classroom_name?: string;
-  teacher?: number;
+  teacher?: number;         // Keep this for backward compatibility  
+  teacher_id: number;       // Add this for courses microservice
   teacher_name?: string;
   created_at: string;
 }
 
 export interface Grade {
   id: number;
-  student: number;
+  student: number;          // Keep this for backward compatibility
+  student_id: number;       // Add this for courses microservice
   student_name?: string;
   subject: number;
   subject_name?: string;
@@ -165,7 +168,8 @@ export interface Grade {
   percentage: number;
   date_recorded: string;
   notes?: string;
-  recorded_by: number;
+  recorded_by: number;      // Keep this for backward compatibility
+  recorded_by_id: number;   // Add this for courses microservice
   recorded_by_name?: string;
 }
 
@@ -304,49 +308,49 @@ export class ApiService {
     return this.http.post<any>(`${this.baseUrl}/${url}`, data, { withCredentials: true });
   }
 
-  // Subject methods
+  // Subject methods - use courses microservice
   getSubjects(classroomId?: number): Observable<Subject[]> {
     const params = classroomId ? `?classroom=${classroomId}` : '';
-    return this.http.get<Subject[]>(`${this.baseUrl}/subjects/${params}`, { withCredentials: true });
+    return this.http.get<Subject[]>(`${this.coursesServiceUrl}/subjects/${params}`, { withCredentials: true });
   }
 
   createSubject(subject: Partial<Subject>): Observable<Subject> {
-    return this.http.post<Subject>(`${this.baseUrl}/subjects/`, subject, { withCredentials: true });
+    return this.http.post<Subject>(`${this.coursesServiceUrl}/subjects/`, subject, { withCredentials: true });
   }
 
   updateSubject(id: number, subject: Partial<Subject>): Observable<Subject> {
-    return this.http.put<Subject>(`${this.baseUrl}/subjects/${id}/`, subject, { withCredentials: true });
+    return this.http.put<Subject>(`${this.coursesServiceUrl}/subjects/${id}/`, subject, { withCredentials: true });
   }
 
   deleteSubject(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.baseUrl}/subjects/${id}/`, { withCredentials: true });
+    return this.http.delete<void>(`${this.coursesServiceUrl}/subjects/${id}/`, { withCredentials: true });
   }
 
-  // Grade methods
+  // Grade methods - use courses microservice
   getGrades(params?: any): Observable<Grade[]> {
-    const queryParams = new URLSearchParams(params).toString();
-    const url = queryParams ? `${this.baseUrl}/grades/?${queryParams}` : `${this.baseUrl}/grades/`;
+    const queryParams = params ? new URLSearchParams(params).toString() : '';
+    const url = queryParams ? `${this.coursesServiceUrl}/grades/?${queryParams}` : `${this.coursesServiceUrl}/grades/`;
     return this.http.get<Grade[]>(url, { withCredentials: true });
   }
 
   createGrade(grade: Partial<Grade>): Observable<Grade> {
-    return this.http.post<Grade>(`${this.baseUrl}/grades/`, grade, { withCredentials: true });
+    return this.http.post<Grade>(`${this.coursesServiceUrl}/grades/`, grade, { withCredentials: true });
   }
 
   updateGrade(id: number, grade: Partial<Grade>): Observable<Grade> {
-    return this.http.put<Grade>(`${this.baseUrl}/grades/${id}/`, grade, { withCredentials: true });
+    return this.http.put<Grade>(`${this.coursesServiceUrl}/grades/${id}/`, grade, { withCredentials: true });
   }
 
   deleteGrade(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.baseUrl}/grades/${id}/`, { withCredentials: true });
+    return this.http.delete<void>(`${this.coursesServiceUrl}/grades/${id}/`, { withCredentials: true });
   }
 
   getGradeTable(classroomId: number): Observable<GradeTable> {
-    return this.http.get<GradeTable>(`${this.baseUrl}/classes/${classroomId}/grade-table/`, { withCredentials: true });
+    return this.http.get<GradeTable>(`${this.coursesServiceUrl}/classes/${classroomId}/grade-table/`, { withCredentials: true });
   }
 
   createBulkGrades(grades: Partial<Grade>[]): Observable<any> {
-    return this.http.post<any>(`${this.baseUrl}/grades/bulk-create/`, { grades }, { withCredentials: true });
+    return this.http.post<any>(`${this.coursesServiceUrl}/grades/bulk-create/`, { grades }, { withCredentials: true });
   }
 
   // Add method to get class students from microservice

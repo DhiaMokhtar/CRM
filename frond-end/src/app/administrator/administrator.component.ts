@@ -397,7 +397,8 @@ export class AdministratorComponent implements OnInit {
 
     const subject: Partial<Subject> = {
       name: this.newSubjectName.trim(),
-      classroom: this.selectedClassForGrading.id
+      classroom_id: this.selectedClassForGrading.id,  // Use classroom_id instead of classroom
+      teacher_id: 1  // You'll need to get the current user's ID
     };
 
     this.apiService.createSubject(subject).subscribe({
@@ -422,17 +423,18 @@ export class AdministratorComponent implements OnInit {
     const key = `${studentId}-${subjectId}`;
     const score = this.editingGrades[key];
     
-    if (score === undefined || score < 0 || score > 100) {
-      this.errorMessage = 'Please enter a valid score between 0 and 100';
+    if (score === undefined || score < 0 || score > 20) {
+      this.errorMessage = 'Please enter a valid score between 0 and 20';
       return;
     }
 
     const grade: Partial<Grade> = {
-      student: studentId,
+      student_id: studentId,  // Use student_id instead of student
       subject: subjectId,
       score: score,
-      max_score: 100,
-      grade_type: 'exam'
+      max_score: 20,
+      grade_type: 'exam',
+      recorded_by_id: 1  // You'll need to get the current user's ID
     };
 
     this.apiService.createGrade(grade).subscribe({
