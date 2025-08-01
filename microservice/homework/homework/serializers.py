@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Homework, HomeworkSubmission
+from .models import Homework, HomeworkSubmission, StudentComment
 import requests
 import logging
 
@@ -29,7 +29,6 @@ class HomeworkSerializer(serializers.ModelSerializer):
     def _get_user_name(self, user_type, user_id):
         """Get user name from users microservice"""
         try:
-            # Try internal Docker network first
             service_urls = [
                 f"https://users_service:8000/api/{user_type}s/{user_id}/",
                 f"https://localhost:8001/api/{user_type}s/{user_id}/",
@@ -90,6 +89,46 @@ class HomeworkSubmissionSerializer(serializers.ModelSerializer):
         if obj.graded_by:
             return self._get_user_name('teacher', obj.graded_by)
         return None
+    
+    def _get_user_name(self, user_type, user_id):
+        """Get user name from users microservice"""
+        try:
+            service_urls = [
+                f"https://users_service:8000/api/{user_type}s/{user_id}/",
+                f"https://localhost:8001/api/{user_type}s/{user_id}/",
+            ]
+            
+            for url in service_urls:
+                try:
+                    response = requests.get(url, timeout=3, verify=False)
+                    if response.status_code == 200:
+                        user_data = response.json()
+                        return user_data.get('username', f'{user_type.title()} #{user_id}')
+                except Exception:
+                    continue
+            
+            return f'{user_type.title()} #{user_id}'
+        except Exception as e:
+            logger.warning(f"Error fetching {user_type} name: {str(e)}")
+            return f'{user_type.title()} #{user_id}'
+
+# Add Student Comment Serializer
+class StudentCommentSerializer(serializers.ModelSerializer):
+    teacher_name = serializers.SerializerMethodField()
+    student_name = serializers.SerializerMethodField()
+    created_at_formatted = serializers.DateTimeField(source='created_at', format="%Y-%m-%d %H:%M:%S", read_only=True)
+    
+    class Meta:
+        model = StudentComment
+        fields = ['id', 'student_id', 'teacher_id', 'teacher_name', 'student_name', 
+                 'content', 'created_at', 'created_at_formatted']
+        read_only_fields = ['created_at']
+    
+    def get_teacher_name(self, obj):
+        return self._get_user_name('teacher', obj.teacher_id)
+    
+    def get_student_name(self, obj):
+        return self._get_user_name('student', obj.student_id)
     
     def _get_user_name(self, user_type, user_id):
         """Get user name from users microservice"""

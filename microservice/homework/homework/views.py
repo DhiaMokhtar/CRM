@@ -5,8 +5,8 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from django.db.models import Q
 from django.utils import timezone
-from .models import Homework, HomeworkSubmission
-from .serializers import HomeworkSerializer, HomeworkSubmissionSerializer
+from .models import Homework, HomeworkSubmission, StudentComment
+from .serializers import HomeworkSerializer, HomeworkSubmissionSerializer, StudentCommentSerializer
 import requests
 import logging
 
@@ -104,7 +104,7 @@ class HomeworkSubmissionViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         """Create or update homework submission"""
         homework_id = request.data.get('homework')
-        student_id = request.data.get('student')
+        student_id = request.data.get('student_id')
         
         # Check if submission already exists
         existing_submission = HomeworkSubmission.objects.filter(
@@ -139,6 +139,91 @@ class HomeworkSubmissionViewSet(viewsets.ModelViewSet):
         
         serializer = self.get_serializer(submission)
         return Response(serializer.data)
+
+# Add Student Comment ViewSet
+class StudentCommentViewSet(viewsets.ModelViewSet):
+    queryset = StudentComment.objects.all()
+    serializer_class = StudentCommentSerializer
+    
+    def get_queryset(self):
+        queryset = StudentComment.objects.all()
+        
+        # Filter by student
+        student_id = self.request.query_params.get('student', None)
+        if student_id:
+            queryset = queryset.filter(student_id=student_id)
+        
+        # Filter by teacher
+        teacher_id = self.request.query_params.get('teacher', None)
+        if teacher_id:
+            queryset = queryset.filter(teacher_id=teacher_id)
+        
+        return queryset.order_by('-created_at')
+
+class BulkCommentView(APIView):
+    """Add comments to all students in a classroom"""
+    
+    def post(self, request):
+        classroom_id = request.data.get('classroom_id')
+        content = request.data.get('content')
+        teacher_id = request.data.get('teacher_id')
+        
+        if not all([classroom_id, content, teacher_id]):
+            return Response({
+                'error': 'classroom_id, content, and teacher_id are required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            # Get students from users microservice
+            students = self._get_classroom_students(classroom_id)
+            
+            if not students:
+                return Response({
+                    'error': 'No students found in this classroom'
+                }, status=status.HTTP_404_NOT_FOUND)
+            
+            # Create comments for all students
+            comments = []
+            for student in students:
+                comment = StudentComment.objects.create(
+                    student_id=student['id'],
+                    teacher_id=teacher_id,
+                    content=content
+                )
+                comments.append(comment)
+            
+            serializer = StudentCommentSerializer(comments, many=True)
+            return Response({
+                'message': f'Comments added to {len(comments)} students',
+                'comments': serializer.data
+            }, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            logger.error(f"Error creating bulk comments: {str(e)}")
+            return Response({
+                'error': 'Failed to create comments'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    def _get_classroom_students(self, classroom_id):
+        """Get students from users microservice"""
+        try:
+            service_urls = [
+                f"https://users_service:8000/api/classes/{classroom_id}/students/",
+                f"https://localhost:8001/api/classes/{classroom_id}/students/",
+            ]
+            
+            for url in service_urls:
+                try:
+                    response = requests.get(url, timeout=5, verify=False)
+                    if response.status_code == 200:
+                        return response.json()
+                except Exception:
+                    continue
+            
+            return []
+        except Exception as e:
+            logger.warning(f"Error fetching classroom students: {str(e)}")
+            return []
 
 class StudentHomeworkView(APIView):
     """Get homework assignments for a specific student"""

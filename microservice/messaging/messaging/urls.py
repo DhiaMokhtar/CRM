@@ -1,13 +1,13 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import MessageViewSet, ConversationViewSet, UserSearchView, HealthCheckView
+from . import views
 
 router = DefaultRouter()
-router.register(r'messages', MessageViewSet)
-router.register(r'conversations', ConversationViewSet)
+router.register(r'messages', views.MessageViewSet)
+router.register(r'conversations', views.ConversationViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),
-    path('search-users/', UserSearchView.as_view(), name='search-users'),
-    path('health/', HealthCheckView.as_view(), name='health-check'),
+    path('search/users/', views.UserSearchView.as_view(), name='user-search'),  # Fix the URL
+    path('health/', views.HealthCheckView.as_view(), name='health-check'),
 ]

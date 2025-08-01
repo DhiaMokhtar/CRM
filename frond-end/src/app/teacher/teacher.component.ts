@@ -149,7 +149,7 @@ export class TeacherComponent implements OnInit {
     }
   }
 
-  // Fix loadTeacherClasses to use users microservice
+  // Make sure to load classes from users service
   loadTeacherClasses() {
     if (this.userId) {
       this.http.get(`https://localhost:8001/api/teachers/${this.userId}/`).subscribe({
@@ -243,16 +243,20 @@ export class TeacherComponent implements OnInit {
     const title = prompt('Enter lesson title:');
     if (title && this.selectedClass) {
       const newLesson = {
-        title,
-        classroom: this.selectedClass.id,
+        title: title.trim(),
+        class_room: this.selectedClass.id,  // Use class_room to match the interface
       };
 
+      console.log('Creating lesson:', newLesson);
+      
       this.apiService.createLesson(newLesson).subscribe({
         next: (response: any) => {
+          console.log('Lesson created successfully:', response);
           this.loadLessons(this.selectedClass.id);
         },
         error: (error) => {
           console.error('Error creating lesson:', error);
+          alert(`Failed to create lesson: ${error.error?.detail || error.message || 'Unknown error'}`);
         }
       });
     }
@@ -468,58 +472,56 @@ export class TeacherComponent implements OnInit {
     this.newComment = '';
   }
 
-  // Fix loadStudentComments to use HTTPS
+  // Fix loadStudentComments to use homework microservice
   loadStudentComments() {
     if (this.selectedStudent) {
-      this.http.get(`https://localhost:8000/api/student-comments/?student=${this.selectedStudent.id}`)
-        .subscribe({
-          next: (response: any) => {
-            this.studentComments = response;
-          },
-          error: (error) => {
-            console.error('Error loading student comments:', error);
-          }
-        });
+      this.apiService.getStudentComments(this.selectedStudent.id).subscribe({
+        next: (response: any) => {
+          this.studentComments = response;
+        },
+        error: (error: any) => { // Add type annotation
+          console.error('Error loading student comments:', error);
+        }
+      });
     }
   }
 
-  // Fix addComment to use HTTPS
+  // Update addComment to use homework microservice
   addComment() {
     if (this.newComment.trim() && this.selectedStudent && this.userId) {
       const commentData = {
-        student: this.selectedStudent.id,
-        teacher: this.userId,
+        student_id: this.selectedStudent.id,
+        teacher_id: parseInt(this.userId),
         content: this.newComment.trim()
       };
       
-      this.http.post('https://localhost:8000/api/student-comments/', commentData)
-        .subscribe({
-          next: (response: any) => {
-            this.loadStudentComments();
-            this.newComment = '';
-          },
-          error: (error) => {
-            console.error('Error adding comment:', error);
-            alert('Failed to add comment. Please try again.');
-          }
-        });
+      this.apiService.addStudentComment(commentData).subscribe({
+        next: (response: any) => {
+          this.loadStudentComments();
+          this.newComment = '';
+        },
+        error: (error: any) => { // Add type annotation
+          console.error('Error adding comment:', error);
+          alert('Failed to add comment. Please try again.');
+        }
+      });
     }
   }
 
+  // Update addCommentToAllStudents to use homework microservice
   addCommentToAllStudents() {
-    if (this.bulkComment.trim() && this.selectedClass) {
-      const commentData = {
-        content: this.bulkComment,
-        class_id: this.selectedClass.id,
-        teacher: this.userId
-      };
-      this.http.post('https://localhost:8000/api/comments/bulk/', commentData).subscribe({
+    if (this.bulkComment.trim() && this.selectedClass && this.userId) {
+      this.apiService.addBulkComments(
+        this.selectedClass.id, 
+        this.bulkComment.trim(), 
+        parseInt(this.userId)
+      ).subscribe({
         next: () => {
           alert('Comment added to all students successfully');
           this.bulkComment = '';
-          this.loadStudentComments(); // Refresh comments if needed
+          this.showBulkCommentSection = false;
         },
-        error: (error) => {
+        error: (error: any) => { // Add type annotation
           console.error('Error adding comments:', error);
           alert('Failed to add comments to all students');
         }

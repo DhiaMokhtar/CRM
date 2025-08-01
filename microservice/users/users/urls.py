@@ -15,4 +15,6 @@ urlpatterns = [
     path('logout/', views.logout_view, name='logout'),
     path('classes/<int:class_id>/students/', views.ClassStudentsView.as_view(), name='class-students'),
     path('parents/<int:parent_id>/children/', views.ParentChildrenView.as_view(), name='parent-children'),
+    path('search/users/', views.UserSearchView.as_view(), name='user-search'),  # Add this
+    path('health/', views.HealthCheckView.as_view(), name='health-check'),
 ]

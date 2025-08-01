@@ -7,6 +7,7 @@ from django.db.models import Q
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 import logging
+import requests
 
 from .models import Message, Conversation
 from .serializers import MessageSerializer, ConversationSerializer
@@ -203,27 +204,60 @@ class UserSearchView(APIView):
         query = request.query_params.get('q', '')
         user_type = request.query_params.get('type', None)
         
-        results = []
+        if not query or len(query.strip()) < 2:
+            return Response([])
         
+        # Forward the search request to users microservice
         try:
-            import requests
+            # Try different service URLs
+            service_urls = [
+                f"http://users_service:8000/api/search/users/?q={query}",  # Docker internal
+                f"https://localhost:8001/api/search/users/?q={query}",      # External
+                f"http://localhost:8001/api/search/users/?q={query}",       # HTTP fallback
+            ]
             
-            # Search in users microservice
-            search_url = f"https://localhost:8001/api/search-users/?q={query}"
             if user_type:
-                search_url += f"&type={user_type}"
+                service_urls = [url + f"&type={user_type}" for url in service_urls]
             
-            response = requests.get(search_url, timeout=5, verify=False)
+            for url in service_urls:
+                try:
+                    print(f"Trying URL: {url}")  # Debug log
+                    response = requests.get(url, timeout=10, verify=False)
+                    print(f"Response status: {response.status_code}")  # Debug log
+                    
+                    if response.status_code == 200:
+                        users_data = response.json()
+                        print(f"Users data received: {users_data}")  # Debug log
+                        
+                        # Format the response to include proper name fields
+                        formatted_users = []
+                        for user in users_data:
+                            formatted_user = {
+                                'id': user.get('id'),
+                                'username': user.get('username'),
+                                'name': user.get('name') or f"{user.get('first_name', '')} {user.get('last_name', '')}".strip() or user.get('username'),
+                                'full_name': f"{user.get('first_name', '')} {user.get('last_name', '')}".strip(),
+                                'type': user.get('type'),
+                                'class_name': user.get('class_name'),
+                                'email': user.get('email')
+                            }
+                            formatted_users.append(formatted_user)
+                        
+                        print(f"Formatted users: {formatted_users}")  # Debug log
+                        return Response(formatted_users)
+                        
+                except Exception as e:
+                    print(f"Request failed for {url}: {str(e)}")  # Debug log
+                    continue
             
-            if response.status_code == 200:
-                results = response.json()
-            else:
-                logger.warning(f"User search failed - Status: {response.status_code}")
-                
+            # If all requests fail, return empty list
+            print("All service URLs failed")  # Debug log
+            return Response([])
+            
         except Exception as e:
-            logger.error(f"Error searching users: {str(e)}")
-        
-        return Response(results)
+            logger.error(f"Error in user search: {str(e)}")
+            print(f"Error in user search: {str(e)}")  # Debug log
+            return Response([])
 
 class HealthCheckView(APIView):
     """

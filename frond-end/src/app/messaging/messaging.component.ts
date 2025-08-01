@@ -4,6 +4,7 @@ import { MessagingService } from '../services/messaging.service';
 import { AuthService } from '../services/auth.service';
 import { Conversation, Message, User } from '../api.service';
 import { Subscription } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 @Component({
   selector: 'app-messaging',
@@ -103,15 +104,24 @@ export class MessagingComponent implements OnInit, OnDestroy {
 
   searchUsers(): void {
     if (this.searchQuery.trim().length > 2) {
+      console.log('Searching for:', this.searchQuery); // Debug log
+      console.log('Using messaging service URL:', environment.messagingServiceUrl); // Debug log
+      
       this.messagingService.searchUsers(this.searchQuery).subscribe({
         next: (users) => {
-          // Filter out current user using correct property names
+          console.log('Raw search results:', users); // Debug log
+          console.log('Number of results:', users.length); // Debug log
+          
+          // Filter out current user
           this.searchResults = users.filter(user => 
             !(user.type === this.currentUser?.user_type && user.id === this.currentUser?.user_id)
           );
+          
+          console.log('Filtered search results:', this.searchResults); // Debug log
         },
         error: (error) => {
           console.error('Error searching users:', error);
+          console.error('Full error object:', JSON.stringify(error, null, 2)); // More detailed error
           this.searchResults = [];
         }
       });
@@ -123,7 +133,7 @@ export class MessagingComponent implements OnInit, OnDestroy {
   selectRecipient(user: User): void {
     this.selectedRecipient = user;
     this.searchResults = [];
-    this.searchQuery = user.username;
+    this.searchQuery = user.name || user.username; // Use name if available, fallback to username
   }
 
   sendMessage(): void {

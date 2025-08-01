@@ -1,17 +1,14 @@
 from django.db import models
 
-# Create your models here.
-
-class ClassRoom(models.Model):
-    name = models.CharField(max_length=100)
-    
-    def __str__(self):
-        return self.name
+# Remove ClassRoom model - it should only exist in users microservice
 
 class Lesson(models.Model):
     title = models.CharField(max_length=200)
-    classroom = models.ForeignKey(ClassRoom, on_delete=models.CASCADE, related_name='lessons')
+    classroom_id = models.IntegerField()  # Reference to classroom in users microservice
     created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-created_at']
 
     def __str__(self):
         return self.title
@@ -33,56 +30,4 @@ class Course(models.Model):
     def __str__(self):
         return self.title
 
-class Message(models.Model):
-    SENDER_TYPES = (
-        ('administrator', 'Administrator'),
-        ('teacher', 'Teacher'),
-        ('student', 'Student'),
-        ('parent', 'Parent'),
-    )
-    
-    sender_type = models.CharField(max_length=15, choices=SENDER_TYPES)
-    sender_id = models.IntegerField()
-    recipient_type = models.CharField(max_length=15, choices=SENDER_TYPES)
-    recipient_id = models.IntegerField()
-    content = models.TextField()
-    is_read = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
-    
-    class Meta:
-        ordering = ['-created_at']
-        indexes = [
-            models.Index(fields=['sender_type', 'sender_id']),
-            models.Index(fields=['recipient_type', 'recipient_id']),
-            models.Index(fields=['created_at']),
-            models.Index(fields=['is_read']),
-        ]
-    
-    def __str__(self):
-        return f"Message from {self.sender_type}({self.sender_id}) to {self.recipient_type}({self.recipient_id})"
-
-class Conversation(models.Model):
-    participant1_type = models.CharField(max_length=15, choices=Message.SENDER_TYPES)
-    participant1_id = models.IntegerField()
-    participant2_type = models.CharField(max_length=15, choices=Message.SENDER_TYPES)
-    participant2_id = models.IntegerField()
-    last_message = models.ForeignKey(Message, on_delete=models.SET_NULL, null=True, blank=True, related_name='conversation_last_message')
-    updated_at = models.DateTimeField(auto_now=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    
-    class Meta:
-        ordering = ['-updated_at']
-        constraints = [
-            models.UniqueConstraint(
-                fields=['participant1_type', 'participant1_id', 'participant2_type', 'participant2_id'],
-                name='unique_conversation'
-            )
-        ]
-        indexes = [
-            models.Index(fields=['participant1_type', 'participant1_id']),
-            models.Index(fields=['participant2_type', 'participant2_id']),
-            models.Index(fields=['updated_at']),
-        ]
-    
-    def __str__(self):
-        return f"Conversation: {self.participant1_type}({self.participant1_id}) <-> {self.participant2_type}({self.participant2_id})"
+# Remove Message and Conversation models - they should only exist in messaging microservice

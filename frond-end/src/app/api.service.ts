@@ -134,8 +134,12 @@ export interface Homework {
 export interface User {
   id: number;
   username: string;
+  name?: string;        // Add this
+  first_name?: string;  // Add this
+  last_name?: string;   // Add this
   type: string;
   class_name?: string;
+  email?: string;       // Add this for completeness
 }
 
 
@@ -181,7 +185,7 @@ export class ApiService {
   private usersServiceUrl = environment.usersServiceUrl;
   private coursesServiceUrl = environment.coursesServiceUrl;
   private messagingServiceUrl = environment.messagingServiceUrl;
-  private homeworkServiceUrl = environment.homeworkServiceUrl;  // Add this
+  private homeworkServiceUrl = environment.homeworkServiceUrl;
 
   constructor(private http: HttpClient) {}
 
@@ -207,12 +211,12 @@ export class ApiService {
   }
 
   searchUsers(query: string, type?: string): Observable<User[]> {
-    let params = `q=${query}`;
-    console.log("params :"+params);
+    let params = `q=${encodeURIComponent(query)}`;
     if (type) {
       params += `&type=${type}`;
     }
-    return this.http.get<User[]>(`${this.messagingServiceUrl}/search-users/?${params}`, { withCredentials: true });
+    // Use the correct endpoint for messaging microservice
+    return this.http.get<User[]>(`${this.messagingServiceUrl}/search/users/?${params}`, { withCredentials: true });
   }
 
   // User management methods (use users microservice)
@@ -362,7 +366,12 @@ export class ApiService {
   }
 
   createLesson(lesson: Partial<Lesson>): Observable<Lesson> {
-    return this.http.post<Lesson>(`${this.coursesServiceUrl}/lessons/`, lesson, { withCredentials: true });
+    // Make sure to use classroom for the courses microservice
+    const lessonData = {
+      title: lesson.title,
+      classroom: lesson.class_room  // Only use class_room property
+    };
+    return this.http.post<Lesson>(`${this.coursesServiceUrl}/lessons/`, lessonData, { withCredentials: true });
   }
 
   updateLesson(id: number, lesson: Partial<Lesson>): Observable<Lesson> {
@@ -448,6 +457,36 @@ export class ApiService {
   getStudentHomework(studentId: number): Observable<Homework[]> {
     return this.http.get<Homework[]>(`${this.homeworkServiceUrl}/students/${studentId}/homework/`, { withCredentials: true });
   }
+
+  // Student Comment methods (use homework microservice)
+  getStudentComments(studentId: number): Observable<StudentComment[]> {
+    return this.http.get<StudentComment[]>(`${this.homeworkServiceUrl}/student-comments/?student=${studentId}`, { withCredentials: true });
+  }
+
+  addStudentComment(comment: Partial<StudentComment>): Observable<StudentComment> {
+    return this.http.post<StudentComment>(`${this.homeworkServiceUrl}/student-comments/`, comment, { withCredentials: true });
+  }
+
+  addBulkComments(classroomId: number, content: string, teacherId: number): Observable<any> {
+    const data = {
+      classroom_id: classroomId,
+      content: content,
+      teacher_id: teacherId
+    };
+    return this.http.post<any>(`${this.homeworkServiceUrl}/comments/bulk/`, data, { withCredentials: true });
+  }
+}
+
+// Add StudentComment interface
+export interface StudentComment {
+  id: number;
+  student_id: number;
+  teacher_id: number;
+  teacher_name: string;
+  student_name: string;
+  content: string;
+  created_at: string;
+  created_at_formatted: string;
 }
 
 

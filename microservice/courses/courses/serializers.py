@@ -1,10 +1,9 @@
 from rest_framework import serializers
-from .models import ClassRoom, Lesson, Chapter, Course
+from .models import Lesson, Chapter, Course
+import requests
+import logging
 
-class ClassRoomSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ClassRoom
-        fields = '__all__'
+logger = logging.getLogger(__name__)
 
 class CourseSerializer(serializers.ModelSerializer):
     class Meta:
@@ -19,8 +18,34 @@ class ChapterSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class LessonSerializer(serializers.ModelSerializer):
-    chapters = ChapterSerializer(many=True, read_only=True)
+    chapters = serializers.SerializerMethodField()
+    classroom_name = serializers.SerializerMethodField()
     
     class Meta:
         model = Lesson
-        fields = '__all__'
+        fields = ['id', 'title', 'classroom_id', 'created_at', 'chapters', 'classroom_name']
+    
+    def get_chapters(self, obj):
+        return ChapterSerializer(obj.chapters.all(), many=True).data
+    
+    def get_classroom_name(self, obj):
+        """Get classroom name from users microservice"""
+        try:
+            service_urls = [
+                f"https://users_service:8000/api/classes/{obj.classroom_id}/",
+                f"https://localhost:8001/api/classes/{obj.classroom_id}/",
+            ]
+            
+            for url in service_urls:
+                try:
+                    response = requests.get(url, timeout=3, verify=False)
+                    if response.status_code == 200:
+                        classroom_data = response.json()
+                        return classroom_data.get('name', f'Class #{obj.classroom_id}')
+                except Exception:
+                    continue
+            
+            return f'Class #{obj.classroom_id}'
+        except Exception as e:
+            logger.warning(f"Error fetching classroom name: {str(e)}")
+            return f'Class #{obj.classroom_id}'

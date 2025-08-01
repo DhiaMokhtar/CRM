@@ -68,15 +68,16 @@
             (click)="selectRecipient(user)"
           >
             <div class="user-info">
-              <strong>{{ user.username }}</strong>
+              <strong>{{ user.name || user.username }}</strong>
               <span class="user-type">{{ user.type }}</span>
               <span *ngIf="user.class_name" class="user-class">{{ user.class_name }}</span>
+              <small *ngIf="user.name && user.username !== user.name" class="text-muted">{{ '@' + user.username }}</small>
             </div>
           </div>
         </div>
         
         <div *ngIf="selectedRecipient" class="selected-recipient">
-          <strong>To: {{ selectedRecipient.username }}</strong> ({{ selectedRecipient.type }})
+          <strong>To: {{ selectedRecipient.name || selectedRecipient.username }}</strong> ({{ selectedRecipient.type }})
         </div>
       </div>
     </div>

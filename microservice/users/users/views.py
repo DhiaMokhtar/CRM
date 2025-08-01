@@ -7,6 +7,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.decorators import action
 from django.db.models import Q
 from .models import Administrator, Teacher, Student, Parent, ClassRoom
 from .serializers import (
@@ -169,3 +170,87 @@ class ParentChildrenView(APIView):
                 {'error': 'Parent not found'}, 
                 status=status.HTTP_404_NOT_FOUND
             )
+
+class UserSearchView(APIView):
+    """Search users across all user types"""
+    
+    def get(self, request):
+        query = request.query_params.get('q', '')
+        user_type = request.query_params.get('type', None)
+        
+        if not query or len(query.strip()) < 2:
+            return Response([])
+        
+        results = []
+        
+        # Search administrators
+        if not user_type or user_type == 'administrator':
+            admins = Administrator.objects.filter(
+                Q(username__icontains=query) | Q(first_name__icontains=query) | Q(last_name__icontains=query)
+            )[:10]
+            results.extend([{
+                'id': admin.id,
+                'username': admin.username,
+                'first_name': admin.first_name,
+                'last_name': admin.last_name,
+                'name': f"{admin.first_name} {admin.last_name}".strip() or admin.username,
+                'type': 'administrator',
+                'email': admin.email
+            } for admin in admins])
+        
+        # Search teachers
+        if not user_type or user_type == 'teacher':
+            teachers = Teacher.objects.filter(
+                Q(username__icontains=query) | Q(first_name__icontains=query) | Q(last_name__icontains=query)
+            )[:10]
+            results.extend([{
+                'id': teacher.id,
+                'username': teacher.username,
+                'first_name': teacher.first_name,
+                'last_name': teacher.last_name,
+                'name': f"{teacher.first_name} {teacher.last_name}".strip() or teacher.username,
+                'type': 'teacher',
+                'email': teacher.email
+            } for teacher in teachers])
+        
+        # Search students
+        if not user_type or user_type == 'student':
+            students = Student.objects.filter(
+                Q(username__icontains=query) | Q(first_name__icontains=query) | Q(last_name__icontains=query)
+            )[:10]
+            results.extend([{
+                'id': student.id,
+                'username': student.username,
+                'first_name': student.first_name,
+                'last_name': student.last_name,
+                'name': f"{student.first_name} {student.last_name}".strip() or student.username,
+                'type': 'student',
+                'class_name': student.class_id.name if student.class_id else None,
+                'email': student.email
+            } for student in students])
+        
+        # Search parents
+        if not user_type or user_type == 'parent':
+            parents = Parent.objects.filter(
+                Q(username__icontains=query) | Q(first_name__icontains=query) | Q(last_name__icontains=query)
+            )[:10]
+            results.extend([{
+                'id': parent.id,
+                'username': parent.username,
+                'first_name': parent.first_name,
+                'last_name': parent.last_name,
+                'name': f"{parent.first_name} {parent.last_name}".strip() or parent.username,
+                'type': 'parent',
+                'email': parent.email
+            } for parent in parents])
+        
+        return Response(results)
+
+class HealthCheckView(APIView):
+    """Health check endpoint for users microservice"""
+    
+    def get(self, request):
+        return Response({
+            'status': 'healthy',
+            'service': 'users'
+        })

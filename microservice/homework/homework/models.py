@@ -31,3 +31,16 @@ class HomeworkSubmission(models.Model):
     
     def __str__(self):
         return f"Submission for {self.homework.title} by Student #{self.student_id}"
+
+# Add Student Comment Model
+class StudentComment(models.Model):
+    student_id = models.IntegerField()  # Reference to student in users microservice
+    teacher_id = models.IntegerField()  # Reference to teacher in users microservice
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"Comment on Student #{self.student_id} by Teacher #{self.teacher_id}"

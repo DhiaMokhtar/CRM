@@ -15,6 +15,7 @@ services:
       - mysql_courses_data:/var/lib/mysql
     networks:
       - courses_network
+      - crm_network
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-ppassword"]
       timeout: 20s
@@ -39,11 +40,15 @@ services:
       - ./fileCourses:/app/fileCourses
       - ../../localhost.pem:/app/ssl/localhost.pem
       - ../../localhost-key.pem:/app/ssl/localhost-key.pem
+      - ./media:/app/media
     depends_on:
       mysql_courses:
         condition: service_healthy
     networks:
       - courses_network
+      - crm_network
+    external_links:
+      - users_service:users_service
     restart: unless-stopped
     command: >
       sh -c "
@@ -74,3 +79,5 @@ volumes:
 networks:
   courses_network:
     driver: bridge
+  crm_network:
+    external: true
