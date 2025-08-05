@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+  mysql_messaging:
+    image: mysql:8.0
+    container_name: mysql_messaging
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: messaging_db
+      MYSQL_USER: crm_user
+      MYSQL_PASSWORD: crm_password
+    ports:
+      - "3309:3306"
+    volumes:
+      - mysql_messaging_data:/var/lib/mysql
+    networks:
+      - messaging_network
+      - crm_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-ppassword"]
+      timeout: 20s
+      retries: 10
+      interval: 10s
+      start_period: 40s
+
+  messaging_service:
+    build: .
+    container_name: messaging_service
+    environment:
+      # Use the SAME secret key as users microservice
+      - SECRET_KEY=django-insecure-1+e#)73aknts5v9id(oqr#*dg2_pqzk86h-zrq^5^15s_v&&1%
+      - DEBUG=True
+      - DB_NAME=messaging_db
+      - DB_USER=root
+      - DB_PASSWORD=password
+      - DB_HOST=mysql_messaging
+      - DB_PORT=3306
+    ports:
+      - "8003:8000"
+    volumes:
+      - ../../localhost.pem:/app/ssl/localhost.pem
+      - ../../localhost-key.pem:/app/ssl/localhost-key.pem
+    depends_on:
+      mysql_messaging:
+        condition: service_healthy
+    networks:
+      - messaging_network
+      - crm_network
+    external_links:
+      - users_service:users_service
+    restart: unless-stopped
+    command: >
+      sh -c "
+        echo 'Waiting for MySQL to be ready...' &&
+        while ! mysqladmin ping -h mysql_messaging -u root -ppassword --silent; do
+          echo 'Waiting for MySQL...' &&
+          sleep 2
+        done &&
+        echo 'MySQL is ready!' &&
+        echo 'Making migrations...' &&
+        python manage.py makemigrations &&
+        echo 'Running migrations...' &&
+        python manage.py migrate &&
+        echo 'Checking SSL certificates...' &&
+        ls -la /app/ssl/ &&
+        echo 'Starting Django server with HTTPS...' &&
+        python manage.py runsslserver 0.0.0.0:8000 --certificate /app/ssl/localhost.pem --key /app/ssl/localhost-key.pem
+      "
+
+volumes:
+  mysql_messaging_data:
+
+networks:
+  messaging_network:
+    driver: bridge
+  crm_network:
+    external: true

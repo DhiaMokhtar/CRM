@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  mysql_users:
+    image: mysql:8.0
+    container_name: mysql_users
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: users_db
+      MYSQL_USER: crm_user
+      MYSQL_PASSWORD: crm_password
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_users_data:/var/lib/mysql
+    networks:
+      - users_network
+      - crm_network  # Add shared network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-ppassword"]
+      timeout: 20s
+      retries: 10
+      interval: 10s
+      start_period: 40s
+
+  users_service:
+    build: .
+    container_name: users_service
+    environment:
+      - SECRET_KEY=django-insecure-1+e#)73aknts5v9id(oqr#*dg2_pqzk86h-zrq^5^15s_v&&1%
+      - DEBUG=True
+      - DB_NAME=users_db
+      - DB_USER=root
+      - DB_PASSWORD=password
+      - DB_HOST=mysql_users
+      - DB_PORT=3306
+    ports:
+      - "8001:8000"
+    depends_on:
+      mysql_users:
+        condition: service_healthy
+    volumes:
+      - ../../localhost.pem:/app/ssl/localhost.pem
+      - ../../localhost-key.pem:/app/ssl/localhost-key.pem
+    networks:
+      - users_network
+      - crm_network  # Add shared network
+    restart: unless-stopped
+    command: >
+      sh -c "
+        echo 'Waiting for MySQL to be ready...' &&
+        while ! mysqladmin ping -h mysql_users -u root -ppassword --silent; do
+          echo 'Waiting for MySQL...' &&
+          sleep 2
+        done &&
+        echo 'MySQL is ready!' &&
+        echo 'Making migrations...' &&
+        python manage.py makemigrations &&
+        echo 'Running migrations...' &&
+        python manage.py migrate &&
+        echo 'Starting Django server with HTTPS...' &&
+        python manage.py runsslserver 0.0.0.0:8000 --certificate /app/ssl/localhost.pem --key /app/ssl/localhost-key.pem
+      "
+
+volumes:
+  mysql_users_data:
+
+networks:
+  users_network:
+    driver: bridge
+  crm_network:  # Add shared network
+    external: true
