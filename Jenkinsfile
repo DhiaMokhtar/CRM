@@ -61,6 +61,8 @@ pipeline {
             steps {
                 // Your deployment steps here
                 // Example: restart app server
+                // Your deployment steps here
+                // Example: restart app server
                 sh 'sudo systemctl restart gunicorn'
                 sh 'sudo systemctl restart nginx'
             }
