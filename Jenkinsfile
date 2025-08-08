@@ -2,12 +2,11 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_BUILDKIT = 1
         FRONTEND_DIR = 'frond-end'
-        USERS_COMPOSE = 'microservice/docker-compose(users).yml'
-        COURSES_COMPOSE = 'microservice/docker-compose(courses).yml'
-        HOMEWORK_COMPOSE = 'microservice/docker-compose(homework).yml'
-        MESSAGING_COMPOSE = 'microservice/docker-compose(messaging).yml'
+        USERS_COMPOSE = 'microservice/users/docker-compose.yml'
+        COURSES_COMPOSE = 'microservice/courses/docker-compose.yml'
+        HOMEWORK_COMPOSE = 'microservice/homework/docker-compose.yml'
+        MESSAGING_COMPOSE = 'microservice/messaging/docker-compose.yml'
     }
 
     stages {
@@ -26,51 +25,53 @@ pipeline {
             }
         }
 
+        stage('Test Frontend') {
+            steps {
+                dir("${FRONTEND_DIR}") {
+                    sh 'npm test'
+                }
+            }
+        }
+
         stage('Build & Test Microservices') {
             parallel {
                 stage('Users Service') {
                     steps {
-                        sh 'docker-compose -f ${USERS_COMPOSE} build'
-                        // Add test commands if available, e.g.:
-                        // sh 'docker-compose -f ${USERS_COMPOSE} run users_service pytest'
+                        sh "docker-compose -f ${USERS_COMPOSE} build"
+                        // Optionally run Django tests:
+                        // sh "docker-compose -f ${USERS_COMPOSE} run users_service python manage.py test"
                     }
                 }
                 stage('Courses Service') {
                     steps {
-                        sh 'docker-compose -f ${COURSES_COMPOSE} build'
-                        // Add test commands if available
+                        sh "docker-compose -f ${COURSES_COMPOSE} build"
+                        // Optionally run Django tests:
+                        // sh "docker-compose -f ${COURSES_COMPOSE} run courses_service python manage.py test"
                     }
                 }
                 stage('Homework Service') {
                     steps {
-                        sh 'docker-compose -f ${HOMEWORK_COMPOSE} build'
-                        // Add test commands if available
+                        sh "docker-compose -f ${HOMEWORK_COMPOSE} build"
+                        // Optionally run Django tests:
+                        // sh "docker-compose -f ${HOMEWORK_COMPOSE} run homework_service python manage.py test"
                     }
                 }
                 stage('Messaging Service') {
                     steps {
-                        sh 'docker-compose -f ${MESSAGING_COMPOSE} build'
-                        // Add test commands if available
+                        sh "docker-compose -f ${MESSAGING_COMPOSE} build"
+                        // Optionally run Django tests:
+                        // sh "docker-compose -f ${MESSAGING_COMPOSE} run messaging_service python manage.py test"
                     }
                 }
             }
         }
 
-        stage('Deploy Microservices') {
+        stage('Deploy All Services') {
             steps {
-                sh 'docker-compose -f ${USERS_COMPOSE} up -d'
-                sh 'docker-compose -f ${COURSES_COMPOSE} up -d'
-                sh 'docker-compose -f ${HOMEWORK_COMPOSE} up -d'
-                sh 'docker-compose -f ${MESSAGING_COMPOSE} up -d'
-            }
-        }
-
-        stage('Push Docker Images') {
-            steps {
-                // Example: Push images to Docker registry (replace with your registry)
-                // sh 'docker tag users_service your-registry/users_service:latest'
-                // sh 'docker push your-registry/users_service:latest'
-                // Repeat for other services
+                sh "docker-compose -f ${USERS_COMPOSE} up -d"
+                sh "docker-compose -f ${COURSES_COMPOSE} up -d"
+                sh "docker-compose -f ${HOMEWORK_COMPOSE} up -d"
+                sh "docker-compose -f ${MESSAGING_COMPOSE} up -d"
             }
         }
     }
