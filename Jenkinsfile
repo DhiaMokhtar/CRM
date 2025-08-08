@@ -1,10 +1,5 @@
 pipeline {
-    agent {
-        docker {
-            image 'node-chrome-agent'
-            args '-u root:root'
-        }
-    }
+    agent any
     
     tools {
         nodejs 'Node24'  // Use the name you configured for Node.js 24.5.0
