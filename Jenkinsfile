@@ -1,5 +1,9 @@
 pipeline {
     agent any
+    
+    tools {
+        nodejs 'Node18'  // Use the name you configured
+    }
 
     environment {
         FRONTEND_DIR = 'frond-end'
