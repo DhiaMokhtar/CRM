@@ -2,7 +2,7 @@ pipeline {
     agent any
     
     tools {
-        nodejs 'Node18'  // Use the name you configured
+        nodejs 'Node24'  // Use the name you configured for Node.js 24.5.0
     }
 
     environment {
