@@ -23,7 +23,7 @@ pipeline {
         stage('Build Frontend') {
             steps {
                 dir("${FRONTEND_DIR}") {
-                    sh 'npm install'
+                    sh 'npm install --legacy-peer-deps'
                     sh 'npm run build -- --configuration production'
                 }
             }
