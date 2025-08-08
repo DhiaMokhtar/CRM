@@ -28,7 +28,7 @@ pipeline {
         stage('Test Frontend') {
             steps {
                 dir("${FRONTEND_DIR}") {
-                    sh 'npm test'
+                    sh 'npm test -- --watch=false --browsers=ChromeHeadless'
                 }
             }
         }
@@ -74,6 +74,17 @@ pipeline {
                 sh "docker-compose -f ${MESSAGING_COMPOSE} up -d"
             }
         }
+
+        stage('Health Check') {
+            steps {
+                script {
+                    sh 'sleep 30' // Wait for services to start
+                    sh 'curl -f http://localhost:8001/health || exit 1' // Users service
+                    sh 'curl -f http://localhost:8002/health || exit 1' // Courses service
+                    // Add other service health checks
+                }
+            }
+        }
     }
 
     post {
@@ -81,12 +92,11 @@ pipeline {
             echo "Pipeline finished."
         }
         success {
-            // Example: Slack notification (requires Slack plugin)
-            // slackSend(channel: '#deployments', message: "CRM pipeline succeeded!")
+            slackSend(channel: '#deployments', message: "✅ CRM pipeline succeeded!")
         }
         failure {
             echo "Pipeline failed."
-            // slackSend(channel: '#deployments', message: "CRM pipeline failed!")
+            slackSend(channel: '#deployments', message: "❌ CRM pipeline failed!")
         }
     }
 }
