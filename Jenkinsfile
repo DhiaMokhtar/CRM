@@ -1,11 +1,13 @@
 pipeline {
-    agent any
-    
-    tools {
-        nodejs 'Node24'  // Use the name you configured for Node.js 24.5.0
+    agent {
+        docker {
+            image 'node-chrome-agent'  // Use the image you built
+            args '-u root:root'
+        }
     }
-
+    
     environment {
+        CHROME_BIN = '/usr/bin/google-chrome'  // Set Chrome binary path
         FRONTEND_DIR = 'frond-end'
         USERS_COMPOSE = 'microservice/users/docker-compose.yml'
         COURSES_COMPOSE = 'microservice/courses/docker-compose.yml'
