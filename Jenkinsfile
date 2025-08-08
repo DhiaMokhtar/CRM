@@ -98,11 +98,12 @@ pipeline {
             echo "Pipeline finished."
         }
         success {
-            slackSend(channel: '#deployments', message: "✅ CRM pipeline succeeded!")
+            echo "✅ CRM pipeline succeeded!"
+            // slackSend(channel: '#deployments', message: "✅ CRM pipeline succeeded!")
         }
         failure {
-            echo "Pipeline failed."
-            slackSend(channel: '#deployments', message: "❌ CRM pipeline failed!")
+            echo "❌ CRM pipeline failed!"
+            // slackSend(channel: '#deployments', message: "❌ CRM pipeline failed!")
         }
     }
 }
