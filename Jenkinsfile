@@ -32,7 +32,9 @@ pipeline {
         stage('Test Frontend') {
             steps {
                 dir("${FRONTEND_DIR}") {
+                    // Skip tests if Chrome is not available in CI
                     sh 'echo "Skipping frontend tests in CI environment"'
+                    // Or use headless tests: sh 'npm test -- --watch=false --browsers=ChromeHeadless'
                 }
             }
         }
@@ -41,22 +43,22 @@ pipeline {
             parallel {
                 stage('Users Service') {
                     steps {
-                        sh "docker compose -f ${USERS_COMPOSE} build"
+                        sh "docker-compose -f ${USERS_COMPOSE} build"
                     }
                 }
                 stage('Courses Service') {
                     steps {
-                        sh "docker compose -f ${COURSES_COMPOSE} build"
+                        sh "docker-compose -f ${COURSES_COMPOSE} build"
                     }
                 }
                 stage('Homework Service') {
                     steps {
-                        sh "docker compose -f ${HOMEWORK_COMPOSE} build"
+                        sh "docker-compose -f ${HOMEWORK_COMPOSE} build"
                     }
                 }
                 stage('Messaging Service') {
                     steps {
-                        sh "docker compose -f ${MESSAGING_COMPOSE} build"
+                        sh "docker-compose -f ${MESSAGING_COMPOSE} build"
                     }
                 }
             }
@@ -67,10 +69,10 @@ pipeline {
                 // Create external network first
                 sh 'docker network create crm_network || true'
                 
-                sh "docker compose -f ${USERS_COMPOSE} up -d"
-                sh "docker compose -f ${COURSES_COMPOSE} up -d"
-                sh "docker compose -f ${HOMEWORK_COMPOSE} up -d"
-                sh "docker compose -f ${MESSAGING_COMPOSE} up -d"
+                sh "docker-compose -f ${USERS_COMPOSE} up -d"
+                sh "docker-compose -f ${COURSES_COMPOSE} up -d"
+                sh "docker-compose -f ${HOMEWORK_COMPOSE} up -d"
+                sh "docker-compose -f ${MESSAGING_COMPOSE} up -d"
             }
         }
 
@@ -79,11 +81,11 @@ pipeline {
                 script {
                     sh 'sleep 30'
                     sh 'docker ps' // Show running containers
-                    // Check HTTPS endpoints since your services use SSL
-                    sh 'curl -k -f https://localhost:8001/ || echo "Users service not ready"'
-                    sh 'curl -k -f https://localhost:8002/ || echo "Courses service not ready"'
-                    sh 'curl -k -f https://localhost:8003/ || echo "Messaging service not ready"'
-                    sh 'curl -k -f https://localhost:8004/ || echo "Homework service not ready"'
+                    // Add health checks for your services
+                    sh 'curl -f http://localhost:8001/ || echo "Users service not ready"'
+                    sh 'curl -f http://localhost:8002/ || echo "Courses service not ready"'
+                    sh 'curl -f http://localhost:8003/ || echo "Messaging service not ready"'
+                    sh 'curl -f http://localhost:8004/ || echo "Homework service not ready"'
                 }
             }
         }
@@ -92,6 +94,7 @@ pipeline {
     post {
         always {
             echo "Pipeline completed."
+            // Clean up if needed
             // Clean up if needed
             sh 'docker system prune -f'
         }
