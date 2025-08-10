@@ -33,6 +33,7 @@ pipeline {
             steps {
                 dir("${FRONTEND_DIR}") {
                     // Skip tests if Chrome is not available in CI
+                     // Skip tests if Chrome is not available in CI
                     sh 'echo "Skipping frontend tests in CI environment"'
                     // Or use headless tests: sh 'npm test -- --watch=false --browsers=ChromeHeadless'
                 }
@@ -97,7 +98,7 @@ pipeline {
             // Clean up if needed
             // Clean up if needed
             // Clean up if needed
-            
+
             sh 'docker system prune -f'
         }
         success {
