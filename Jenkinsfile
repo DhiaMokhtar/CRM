@@ -96,7 +96,6 @@ pipeline {
         always {
             echo "Pipeline completed."
             // Clean up if needed
-            // Clean up if needed
 
             sh 'docker system prune -f'
         }
