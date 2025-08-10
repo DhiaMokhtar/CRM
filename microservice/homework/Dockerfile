@@ -18,7 +18,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Create directories for media files
-RUN mkdir -p /app/media /app/ssl
+RUN rm -rf /app/ssl && mkdir -p /app/media /app/ssl && chmod 700 /app/ssl
 
 # Expose port
 EXPOSE 8000

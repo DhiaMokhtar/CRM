@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Create media and ssl directories
-RUN mkdir -p /app/media /app/ssl
+RUN rm -rf /app/ssl && mkdir -p /app/media /app/ssl && chmod 700 /app/ssl
 
 # Copy requirements and install Python dependencies
 COPY requirements.txt .
