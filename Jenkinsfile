@@ -1,22 +1,36 @@
 pipeline {
     agent any
-    
-    tools {
-        nodejs 'Node24'  // Make sure this matches your Jenkins NodeJS installation
-    }
-    
+    tools { nodejs 'Node24' }
     environment {
         FRONTEND_DIR = 'frond-end'
         USERS_COMPOSE = 'microservice/users/docker-compose.yml'
         COURSES_COMPOSE = 'microservice/courses/docker-compose.yml'
         HOMEWORK_COMPOSE = 'microservice/homework/docker-compose.yml'
         MESSAGING_COMPOSE = 'microservice/messaging/docker-compose.yml'
+        MYSQL_ROOT_PASSWORD = 'crm_password'
     }
 
     stages {
         stage('Checkout') {
+            steps { checkout scm }
+        }
+
+        // Provision SSL cert/key into workspace root for bind-mounts
+        stage('Prepare SSL certs') {
             steps {
-                checkout scm
+                withCredentials([
+                    file(credentialsId: 'SSL_CERT_FILE', variable: 'SSL_CERT'),
+                    file(credentialsId: 'SSL_KEY_FILE',  variable: 'SSL_KEY')
+                ]) {
+                    sh '''
+                      set -e
+                      rm -rf localhost.pem localhost-key.pem
+                      cp -f "$SSL_CERT" localhost.pem
+                      cp -f "$SSL_KEY"  localhost-key.pem
+                      chmod 600 localhost.pem localhost-key.pem
+                      ls -la .
+                    '''
+                }
             }
         }
 
@@ -70,17 +84,15 @@ pipeline {
                 withEnv(["PATH+NODE=${tool 'Node24'}/bin"]) {
                     sh '''
                         set -e
-                        # Fully stop and remove networks first
                         docker-compose -f microservice/users/docker-compose.yml down -v || true
                         docker-compose -f microservice/courses/docker-compose.yml down -v || true
                         docker-compose -f microservice/homework/docker-compose.yml down -v || true
                         docker-compose -f microservice/messaging/docker-compose.yml down -v || true
 
-                        # Recreate shared network
+                        # Recreate shared external network once
                         docker network rm crm_network 2>/dev/null || true
                         docker network create crm_network
 
-                        # Bring services back up, forcing recreate
                         docker-compose -f microservice/users/docker-compose.yml up -d --remove-orphans --force-recreate
                         docker-compose -f microservice/courses/docker-compose.yml up -d --remove-orphans --force-recreate
                         docker-compose -f microservice/homework/docker-compose.yml up -d --remove-orphans --force-recreate
@@ -94,12 +106,12 @@ pipeline {
             steps {
                 script {
                     sh 'sleep 30'
-                    sh 'docker ps' // Show running containers
-                    // Add health checks for your services
-                    sh 'curl -f http://localhost:8001/ || echo "Users service not ready"'
-                    sh 'curl -f http://localhost:8002/ || echo "Courses service not ready"'
-                    sh 'curl -f http://localhost:8003/ || echo "Messaging service not ready"'
-                    sh 'curl -f http://localhost:8004/ || echo "Homework service not ready"'
+                    sh 'docker ps'
+                    # Use HTTPS with self-signed (-k)
+                    sh 'curl -k -f https://localhost:8001/ || echo "Users service not ready"'
+                    sh 'curl -k -f https://localhost:8002/ || echo "Courses service not ready"'
+                    sh 'curl -k -f https://localhost:8003/ || echo "Messaging service not ready"'
+                    sh 'curl -k -f https://localhost:8004/ || echo "Homework service not ready"'
                 }
             }
         }
@@ -108,15 +120,9 @@ pipeline {
     post {
         always {
             echo "Pipeline completed."
-            // Clean up if needed
-
             sh 'docker system prune -f'
         }
-        success {
-            echo "✅ CRM pipeline succeeded!"
-        }
-        failure {
-            echo "❌ CRM pipeline failed!"
-        }
+        success { echo "✅ CRM pipeline succeeded!" }
+        failure { echo "❌ CRM pipeline failed!" }
     }
 }

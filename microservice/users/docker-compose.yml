@@ -5,7 +5,7 @@ services:
     image: mysql:8.0
     container_name: mysql_users
     environment:
-      MYSQL_ROOT_PASSWORD: crm_password
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-crm_password}
       MYSQL_DATABASE: crm_users
     ports:
       - "3307:3306"
@@ -13,49 +13,24 @@ services:
       - mysql_users_data:/var/lib/mysql
     networks:
       - crm_network
-    healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p${MYSQL_ROOT_PASSWORD} --silent"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
-      start_period: 5s
 
   users_service:
     build: .
     container_name: users_service
     environment:
-      - DB_HOST=mysql_users
-      - DB_PORT=3306
-      - DB_USER=root
-      - DB_PASSWORD=crm_password
+      - DB_PASSWORD=${MYSQL_ROOT_PASSWORD:-crm_password}
     ports:
       - "8001:8000"
-    depends_on:
-      mysql_users:
-        condition: service_healthy
     volumes:
       - ../../localhost.pem:/app/ssl/localhost.pem:ro
       - ../../localhost-key.pem:/app/ssl/localhost-key.pem:ro
-      - ./media:/app/media
-    command: >
-      sh -c "
-        echo 'Waiting for MySQL to be ready...' &&
-        until mysqladmin ping -h mysql_users -u root -pcrm_password --silent; do
-          echo 'Waiting for MySQL...' && sleep 2
-        done &&
-        echo 'MySQL is ready!' &&
-        echo 'Making migrations...' && python manage.py makemigrations &&
-        echo 'Running migrations...' && python manage.py migrate &&
-        echo 'Checking SSL certificates...' &&
-        ls -la /app/ssl &&
-        [ -f /app/ssl/localhost.pem ] && [ -f /app/ssl/localhost-key.pem ] || (echo 'SSL cert/key missing or not files' && exit 1) &&
-        echo 'Starting Django server with HTTPS...' &&
-        python manage.py runsslserver 0.0.0.0:8000 --certificate /app/ssl/localhost.pem --key /app/ssl/localhost-key.pem
-      "
+    networks:
+      - crm_network
 
 volumes:
   mysql_users_data:
 
 networks:
   crm_network:
+    external: true
     name: crm_network
