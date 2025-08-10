@@ -14,7 +14,6 @@ services:
     volumes:
       - mysql_courses_data:/var/lib/mysql
     networks:
-      - courses_network
       - crm_network
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-ppassword"]

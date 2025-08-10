@@ -14,8 +14,7 @@ services:
     volumes:
       - mysql_messaging_data:/var/lib/mysql
     networks:
-      - messaging_network
-      - crm_network
+      - crm_network  # Remove messaging_network
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-ppassword"]
       timeout: 20s
@@ -44,8 +43,7 @@ services:
       mysql_messaging:
         condition: service_healthy
     networks:
-      - messaging_network
-      - crm_network
+      - crm_network  # Remove messaging_network
     external_links:
       - users_service:users_service
     restart: unless-stopped
