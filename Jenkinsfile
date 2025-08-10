@@ -107,7 +107,7 @@ pipeline {
                 script {
                     sh 'sleep 30'
                     sh 'docker ps'
-                    # Use HTTPS with self-signed (-k)
+                    // Use HTTPS with self-signed (-k)
                     sh 'curl -k -f https://localhost:8001/ || echo "Users service not ready"'
                     sh 'curl -k -f https://localhost:8002/ || echo "Courses service not ready"'
                     sh 'curl -k -f https://localhost:8003/ || echo "Messaging service not ready"'
