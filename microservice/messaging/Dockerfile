@@ -20,6 +20,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy project files
 COPY . .
 
+# Ensure mount points exist and are directories (after COPY)
+RUN rm -rf /app/ssl && mkdir -p /app/media /app/ssl && chmod 700 /app/ssl
+
 # Expose port
 EXPOSE 8000
 

@@ -39,23 +39,20 @@ services:
       mysql_users:
         condition: service_healthy
     volumes:
-      - ../../localhost.pem:/app/ssl/localhost.pem
-      - ../../localhost-key.pem:/app/ssl/localhost-key.pem
-    networks:
-      - crm_network
-    restart: unless-stopped
+      - ../../localhost.pem:/app/ssl/localhost.pem:ro
+      - ../../localhost-key.pem:/app/ssl/localhost-key.pem:ro
     command: >
       sh -c "
         echo 'Waiting for MySQL to be ready...' &&
-        while ! mysqladmin ping -h mysql_users -u root -ppassword --silent; do
-          echo 'Waiting for MySQL...' &&
-          sleep 2
+        until mysqladmin ping -h mysql_users -u root -p${MYSQL_PASSWORD:-crm_password} --silent; do
+          echo 'Waiting for MySQL...' && sleep 2
         done &&
         echo 'MySQL is ready!' &&
-        echo 'Making migrations...' &&
-        python manage.py makemigrations &&
-        echo 'Running migrations...' &&
-        python manage.py migrate &&
+        echo 'Making migrations...' && python manage.py makemigrations &&
+        echo 'Running migrations...' && python manage.py migrate &&
+        echo 'Checking SSL certificates...' &&
+        ls -la /app/ssl && 
+        [ -f /app/ssl/localhost.pem ] && [ -f /app/ssl/localhost-key.pem ] || (echo 'SSL cert/key missing or not files' && exit 1) &&
         echo 'Starting Django server with HTTPS...' &&
         python manage.py runsslserver 0.0.0.0:8000 --certificate /app/ssl/localhost.pem --key /app/ssl/localhost-key.pem
       "

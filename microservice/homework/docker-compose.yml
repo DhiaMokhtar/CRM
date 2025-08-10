@@ -36,8 +36,8 @@ services:
     ports:
       - "8004:8000"
     volumes:
-      - ../../localhost.pem:/app/ssl/localhost.pem
-      - ../../localhost-key.pem:/app/ssl/localhost-key.pem
+      - ../../localhost.pem:/app/ssl/localhost.pem:ro
+      - ../../localhost-key.pem:/app/ssl/localhost-key.pem:ro
       - ./media:/app/media
     depends_on:
       mysql_homework:
@@ -61,6 +61,7 @@ services:
         python manage.py migrate &&
         echo 'Checking SSL certificates...' &&
         ls -la /app/ssl/ &&
+        [ -f /app/ssl/localhost.pem ] && [ -f /app/ssl/localhost-key.pem ] || (echo 'SSL cert/key missing or not files' && exit 1) &&
         echo 'Starting Django server with HTTPS...' &&
         python manage.py runsslserver 0.0.0.0:8000 --certificate /app/ssl/localhost.pem --key /app/ssl/localhost-key.pem
       "
