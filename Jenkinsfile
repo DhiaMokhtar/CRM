@@ -93,24 +93,21 @@ pipeline {
 
         stage('Deploy Services') {
             steps {
-                withEnv(["PATH+NODE=${tool 'Node24'}/bin"]) {
-                    sh '''
-                        set -e
-                        docker-compose -f microservice/users/docker-compose.yml down -v || true
-                        docker-compose -f microservice/courses/docker-compose.yml down -v || true
-                        docker-compose -f microservice/homework/docker-compose.yml down -v || true
-                        docker-compose -f microservice/messaging/docker-compose.yml down -v || true
+                sh '''
+                    set -e
+                    docker-compose -f microservice/users/docker-compose.yml down -v || true
+                    docker-compose -f microservice/courses/docker-compose.yml down -v || true
+                    docker-compose -f microservice/homework/docker-compose.yml down -v || true
+                    docker-compose -f microservice/messaging/docker-compose.yml down -v || true
 
-                        # Recreate shared external network once
-                        docker network rm crm_network 2>/dev/null || true
-                        docker network create crm_network
+                    docker network rm crm_network 2>/dev/null || true
+                    docker network create crm_network
 
-                        docker-compose -f microservice/users/docker-compose.yml up -d --remove-orphans --force-recreate
-                        docker-compose -f microservice/courses/docker-compose.yml up -d --remove-orphans --force-recreate
-                        docker-compose -f microservice/homework/docker-compose.yml up -d --remove-orphans --force-recreate
-                        docker-compose -f microservice/messaging/docker-compose.yml up -d --remove-orphans --force-recreate
-                    '''
-                }
+                    docker-compose -f microservice/users/docker-compose.yml up -d --remove-orphans --force-recreate
+                    docker-compose -f microservice/courses/docker-compose.yml up -d --remove-orphans --force-recreate
+                    docker-compose -f microservice/homework/docker-compose.yml up -d --remove-orphans --force-recreate
+                    docker-compose -f microservice/messaging/docker-compose.yml up -d --remove-orphans --force-recreate
+                '''
             }
         }
 

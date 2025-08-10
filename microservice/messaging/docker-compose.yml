@@ -26,7 +26,6 @@ services:
     build: .
     container_name: messaging_service
     environment:
-      # Use the SAME secret key as users microservice
       - SECRET_KEY=django-insecure-1+e#)73aknts5v9id(oqr#*dg2_pqzk86h-zrq^5^15s_v&&1%
       - DEBUG=True
       - DB_NAME=messaging_db
@@ -37,8 +36,8 @@ services:
     ports:
       - "8003:8000"
     volumes:
-      - ../../localhost.pem:/app/ssl/localhost.pem:ro
-      - ../../localhost-key.pem:/app/ssl/localhost-key.pem:ro
+      - ../../localhost.pem:/certs-in/localhost.pem:ro
+      - ../../localhost-key.pem:/certs-in/localhost-key.pem:ro
     command: >
       sh -c "
         echo 'Waiting for MySQL to be ready...' &&
@@ -48,8 +47,12 @@ services:
         echo 'MySQL is ready!' &&
         echo 'Making migrations...' && python manage.py makemigrations &&
         echo 'Running migrations...' && python manage.py migrate &&
-        echo 'Checking SSL certificates...' && ls -la /app/ssl &&
-        [ -f /app/ssl/localhost.pem ] && [ -f /app/ssl/localhost-key.pem ] || (echo 'SSL cert/key missing or not files' && exit 1) &&
+        echo 'Preparing SSL certs...' &&
+        mkdir -p /app/ssl &&
+        rm -rf /app/ssl/localhost.pem /app/ssl/localhost-key.pem &&
+        install -m 600 /certs-in/localhost.pem /app/ssl/localhost.pem &&
+        install -m 600 /certs-in/localhost-key.pem /app/ssl/localhost-key.pem &&
+        ls -la /app/ssl &&
         echo 'Starting Django server with HTTPS...' &&
         python manage.py runsslserver 0.0.0.0:8000 --certificate /app/ssl/localhost.pem --key /app/ssl/localhost-key.pem
       "
