@@ -44,7 +44,6 @@ services:
       mysql_courses:
         condition: service_healthy
     networks:
-      - courses_network
       - crm_network
     external_links:
       - users_service:users_service
@@ -76,6 +75,6 @@ volumes:
   mysql_courses_data:
 
 networks:
-  default:
+  crm_network:
     external: true
     name: crm_network

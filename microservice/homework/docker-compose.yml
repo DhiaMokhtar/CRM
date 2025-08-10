@@ -43,7 +43,6 @@ services:
       mysql_homework:
         condition: service_healthy
     networks:
-      - homework_network
       - crm_network
     external_links:
       - users_service:users_service
@@ -70,6 +69,6 @@ volumes:
   mysql_homework_data:
 
 networks:
-  default:
+  crm_network:
     external: true
     name: crm_network
