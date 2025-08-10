@@ -5,10 +5,8 @@ services:
     image: mysql:8.0
     container_name: mysql_users
     environment:
-      MYSQL_ROOT_PASSWORD: password
-      MYSQL_DATABASE: users_db
-      MYSQL_USER: crm_user
-      MYSQL_PASSWORD: crm_password
+      MYSQL_ROOT_PASSWORD: crm_password
+      MYSQL_DATABASE: crm_users
     ports:
       - "3307:3306"
     volumes:
@@ -16,23 +14,20 @@ services:
     networks:
       - crm_network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-ppassword"]
-      timeout: 20s
-      retries: 10
-      interval: 10s
-      start_period: 40s
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p${MYSQL_ROOT_PASSWORD} --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
 
   users_service:
     build: .
     container_name: users_service
     environment:
-      - SECRET_KEY=django-insecure-1+e#)73aknts5v9id(oqr#*dg2_pqzk86h-zrq^5^15s_v&&1%
-      - DEBUG=True
-      - DB_NAME=users_db
-      - DB_USER=root
-      - DB_PASSWORD=password
       - DB_HOST=mysql_users
       - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=crm_password
     ports:
       - "8001:8000"
     depends_on:
@@ -41,17 +36,18 @@ services:
     volumes:
       - ../../localhost.pem:/app/ssl/localhost.pem:ro
       - ../../localhost-key.pem:/app/ssl/localhost-key.pem:ro
+      - ./media:/app/media
     command: >
       sh -c "
         echo 'Waiting for MySQL to be ready...' &&
-        until mysqladmin ping -h mysql_users -u root -p${MYSQL_PASSWORD:-crm_password} --silent; do
+        until mysqladmin ping -h mysql_users -u root -pcrm_password --silent; do
           echo 'Waiting for MySQL...' && sleep 2
         done &&
         echo 'MySQL is ready!' &&
         echo 'Making migrations...' && python manage.py makemigrations &&
         echo 'Running migrations...' && python manage.py migrate &&
         echo 'Checking SSL certificates...' &&
-        ls -la /app/ssl && 
+        ls -la /app/ssl &&
         [ -f /app/ssl/localhost.pem ] && [ -f /app/ssl/localhost-key.pem ] || (echo 'SSL cert/key missing or not files' && exit 1) &&
         echo 'Starting Django server with HTTPS...' &&
         python manage.py runsslserver 0.0.0.0:8000 --certificate /app/ssl/localhost.pem --key /app/ssl/localhost-key.pem
@@ -62,5 +58,4 @@ volumes:
 
 networks:
   crm_network:
-    external: true
     name: crm_network

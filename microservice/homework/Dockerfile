@@ -16,9 +16,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy project files
 COPY . .
-
-# Create directories for media files
-RUN rm -rf /app/ssl && mkdir -p /app/media /app/ssl && chmod 700 /app/ssl
+RUN rm -rf /app/ssl/localhost.pem /app/ssl/localhost-key.pem && mkdir -p /app/ssl /app/media && chmod 700 /app/ssl
 
 # Expose port
 EXPOSE 8000

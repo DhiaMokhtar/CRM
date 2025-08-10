@@ -36,9 +36,9 @@ services:
     ports:
       - "8004:8000"
     volumes:
+      - ./media:/app/media
       - ../../localhost.pem:/app/ssl/localhost.pem:ro
       - ../../localhost-key.pem:/app/ssl/localhost-key.pem:ro
-      - ./media:/app/media
     depends_on:
       mysql_homework:
         condition: service_healthy
@@ -50,17 +50,19 @@ services:
     command: >
       sh -c "
         echo 'Waiting for MySQL to be ready...' &&
-        while ! mysqladmin ping -h mysql_homework -u root -ppassword --silent; do
-          echo 'Waiting for MySQL...' &&
-          sleep 2
+        while ! mysqladmin ping -h mysql_homework -u root -pcrm_password --silent; do
+          echo 'Waiting for MySQL...' && sleep 2
         done &&
         echo 'MySQL is ready!' &&
-        echo 'Making migrations...' &&
-        python manage.py makemigrations &&
-        echo 'Running migrations...' &&
-        python manage.py migrate &&
-        echo 'Checking SSL certificates...' &&
-        ls -la /app/ssl/ &&
+        # Fix broken migration chain if 0001 is missing but later files exist
+        if [ ! -f homework/migrations/0001_initial.py ] && ls homework/migrations/0002_* >/dev/null 2>&1; then
+          echo 'Fixing broken migrations chain...' &&
+          find homework/migrations -type f -name '0*.py' ! -name '__init__.py' -delete &&
+          python manage.py makemigrations homework
+        fi &&
+        echo 'Making migrations...' && python manage.py makemigrations &&
+        echo 'Running migrations...' && python manage.py migrate &&
+        echo 'Checking SSL certificates...' && ls -la /app/ssl &&
         [ -f /app/ssl/localhost.pem ] && [ -f /app/ssl/localhost-key.pem ] || (echo 'SSL cert/key missing or not files' && exit 1) &&
         echo 'Starting Django server with HTTPS...' &&
         python manage.py runsslserver 0.0.0.0:8000 --certificate /app/ssl/localhost.pem --key /app/ssl/localhost-key.pem
