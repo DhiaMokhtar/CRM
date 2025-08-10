@@ -66,29 +66,16 @@ pipeline {
         }
 
         stage('Deploy Services') {
-      steps {
-        withEnv(["PATH+NODE=${tool 'Node24'}/bin"]) {
-          sh '''
-            set -e
-            # Fully stop and remove networks first
-            docker-compose -f microservice/users/docker-compose.yml down -v || true
-            docker-compose -f microservice/courses/docker-compose.yml down -v || true
-            docker-compose -f microservice/homework/docker-compose.yml down -v || true
-            docker-compose -f microservice/messaging/docker-compose.yml down -v || true
-
-            # Recreate shared network
-            docker network rm crm_network 2>/dev/null || true
-            docker network create crm_network
-
-            # Bring services back up, forcing recreate
-            docker-compose -f microservice/users/docker-compose.yml up -d --remove-orphans --force-recreate
-            docker-compose -f microservice/courses/docker-compose.yml up -d --remove-orphans --force-recreate
-            docker-compose -f microservice/homework/docker-compose.yml up -d --remove-orphans --force-recreate
-            docker-compose -f microservice/messaging/docker-compose.yml up -d --remove-orphans --force-recreate
-          '''
+            steps {
+                // Create external network first
+                sh 'docker network create crm_network || true'
+                
+                sh "docker-compose -f ${USERS_COMPOSE} up -d"
+                sh "docker-compose -f ${COURSES_COMPOSE} up -d"
+                sh "docker-compose -f ${HOMEWORK_COMPOSE} up -d"
+                sh "docker-compose -f ${MESSAGING_COMPOSE} up -d"
+            }
         }
-      }
-    }
 
         stage('Health Check') {
             steps {

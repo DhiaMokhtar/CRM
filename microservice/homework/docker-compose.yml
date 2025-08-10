@@ -71,6 +71,7 @@ volumes:
   mysql_homework_data:
 
 networks:
-  default:
+  homework_network:
+    driver: bridge
+  crm_network:
     external: true
-    name: crm_network

@@ -71,6 +71,7 @@ volumes:
   mysql_messaging_data:
 
 networks:
-  default:
+  messaging_network:
+    driver: bridge
+  crm_network:
     external: true
-    name: crm_network

@@ -77,6 +77,7 @@ volumes:
   mysql_courses_data:
 
 networks:
-  default:
+  courses_network:
+    driver: bridge
+  crm_network:
     external: true
-    name: crm_network

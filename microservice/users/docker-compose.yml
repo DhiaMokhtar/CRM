@@ -66,6 +66,7 @@ volumes:
   mysql_users_data:
 
 networks:
-  default:
+  users_network:
+    driver: bridge
+  crm_network:  # Add shared network
     external: true
-    name: crm_network
