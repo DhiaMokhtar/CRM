@@ -18,18 +18,30 @@ pipeline {
         // Provision SSL cert/key into workspace root for bind-mounts
         stage('Prepare SSL certs') {
             steps {
-                withCredentials([
-                    file(credentialsId: 'SSL_CERT_FILE', variable: 'SSL_CERT'),
-                    file(credentialsId: 'SSL_KEY_FILE',  variable: 'SSL_KEY')
-                ]) {
-                    sh '''
-                      set -e
-                      rm -rf localhost.pem localhost-key.pem
-                      cp -f "$SSL_CERT" localhost.pem
-                      cp -f "$SSL_KEY"  localhost-key.pem
-                      chmod 600 localhost.pem localhost-key.pem
-                      ls -la .
-                    '''
+                script {
+                    try {
+                        withCredentials([
+                            file(credentialsId: 'SSL_CERT_FILE', variable: 'SSL_CERT'),
+                            file(credentialsId: 'SSL_KEY_FILE',  variable: 'SSL_KEY')
+                        ]) {
+                            sh '''
+                              set -e
+                              rm -rf localhost.pem localhost-key.pem
+                              cp -f "$SSL_CERT" localhost.pem
+                              cp -f "$SSL_KEY"  localhost-key.pem
+                              chmod 600 localhost.pem localhost-key.pem
+                              ls -la .
+                            '''
+                        }
+                    } catch (err) {
+                        echo 'SSL credentials not found; using repo cert files'
+                        sh '''
+                          set -e
+                          test -f localhost.pem -a -f localhost-key.pem || { echo "Missing localhost.pem or localhost-key.pem in repo root"; exit 1; }
+                          chmod 600 localhost.pem localhost-key.pem
+                          ls -la .
+                        '''
+                    }
                 }
             }
         }

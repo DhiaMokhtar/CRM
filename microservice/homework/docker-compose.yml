@@ -50,7 +50,7 @@ services:
     command: >
       sh -c "
         echo 'Waiting for MySQL to be ready...' &&
-        while ! mysqladmin ping -h mysql_homework -u root -pcrm_password --silent; do
+        while ! mysqladmin ping -h mysql_homework -u root -ppassword --silent; do
           echo 'Waiting for MySQL...' && sleep 2
         done &&
         echo 'MySQL is ready!' &&
