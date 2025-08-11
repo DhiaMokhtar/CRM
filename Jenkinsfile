@@ -18,45 +18,19 @@ pipeline {
         // Provision SSL cert/key into workspace root for bind-mounts
         stage('Prepare SSL certs') {
             steps {
-                script {
-                    try {
-                        withCredentials([
-                            file(credentialsId: 'SSL_CERT_FILE', variable: 'SSL_CERT'),
-                            file(credentialsId: 'SSL_KEY_FILE',  variable: 'SSL_KEY')
-                        ]) {
-                            sh '''
-                              set -e
-                              # Clean stale dirs/files from previous runs
-                              rm -rf localhost.pem localhost-key.pem certs
-                              # Place certs at repo root
-                              cp -f "$SSL_CERT" localhost.pem
-                              cp -f "$SSL_KEY"  localhost-key.pem
-                              chmod 600 localhost.pem localhost-key.pem
-                              # Create certs dir for compose bind-mounts
-                              mkdir -p certs
-                              cp -f localhost.pem certs/localhost.pem
-                              cp -f localhost-key.pem certs/localhost-key.pem
-                              chmod 600 certs/localhost.pem certs/localhost-key.pem
-                              ls -la . && ls -la certs
-                            '''
-                        }
-                    } catch (err) {
-                        echo 'SSL credentials not found; using repo cert files'
-                        sh '''
-                          set -e
-                          # Ensure they are real files, not directories
-                          test -f localhost.pem -a -f localhost-key.pem || { echo "Missing localhost.pem or localhost-key.pem in repo root"; exit 1; }
-                          chmod 600 localhost.pem localhost-key.pem
-                          # Recreate certs dir
-                          rm -rf certs
-                          mkdir -p certs
-                          cp -f localhost.pem certs/localhost.pem
-                          cp -f localhost-key.pem certs/localhost-key.pem
-                          chmod 600 certs/localhost.pem certs/localhost-key.pem
-                          ls -la . && ls -la certs
-                        '''
-                    }
-                }
+                sh '''
+                  set -e
+                  mkdir -p certs
+                  if [ ! -f certs/localhost.pem ] || [ ! -f certs/localhost-key.pem ]; then
+                    echo 'Generating self-signed certs for pipeline...' &&
+                    openssl req -x509 -nodes -newkey rsa:2048 -days 7 \
+                      -keyout certs/localhost-key.pem \
+                      -out certs/localhost.pem \
+                      -subj '/CN=localhost';
+                  fi
+                  chmod 600 certs/localhost.pem certs/localhost-key.pem
+                  ls -la certs
+                '''
             }
         }
 

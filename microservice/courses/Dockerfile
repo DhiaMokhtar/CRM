@@ -2,12 +2,12 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies including mysql client
 RUN apt-get update && apt-get install -y \
     default-libmysqlclient-dev \
     default-mysql-client \
     build-essential \
     pkg-config \
+    openssl \
     && rm -rf /var/lib/apt/lists/*
 
 # Create media and ssl directories
