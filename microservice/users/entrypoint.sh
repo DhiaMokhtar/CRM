@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 set -e
-echo "$(date +'%F %T') | [users] entrypoint version 2025-08-12-01"
+echo "$(date +'%F %T') | [users] entrypoint version 2025-08-12-02"
 
-DB_HOST="${DB_HOST:-mysql_users}"          # FIX: was mysql_courses
+DB_HOST="${DB_HOST:-mysql_users}"
 DB_USER="${DB_USER:-crm_user}"
 DB_PASSWORD="${DB_PASSWORD:-crm_password}"
-ROOT_PW="${ROOT_PASSWORD:-password}"
+DB_NAME="${DB_NAME:-users_db}"
+ROOT_PW="${ROOT_PASSWORD:-crm_password}"
 MAX_TRIES=60
 
-echo "$(date +'%F %T') | [users] Waiting for MySQL at $DB_HOST user=$DB_USER"
-
+echo "$(date +'%F %T') | [users] Waiting for MySQL at $DB_HOST user=$DB_USER db=$DB_NAME"
 for i in $(seq 1 $MAX_TRIES); do
   if mysqladmin ping -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASSWORD" --silent 2>/dev/null; then
     echo "[users] MySQL ready after $i attempt(s)"
@@ -27,6 +27,9 @@ if ! mysqladmin ping -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASSWORD" --silent 2>/de
     echo "[users] ERROR: DB not reachable"; exit 1
   fi
 fi
+
+echo "[users] Ensuring database $DB_NAME exists"
+mysql -h "$DB_HOST" -u root -p"$ROOT_PW" -e "CREATE DATABASE IF NOT EXISTS \`$DB_NAME\`; GRANT ALL ON \`$DB_NAME\`.* TO '$DB_USER'@'%' IDENTIFIED BY '$DB_PASSWORD'; FLUSH PRIVILEGES;" || echo "[users] DB init step skipped"
 
 echo "[users] Running migrations"
 python manage.py makemigrations

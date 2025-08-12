@@ -6,7 +6,9 @@ services:
     container_name: mysql_users
     environment:
       MYSQL_ROOT_PASSWORD: crm_password
-      MYSQL_DATABASE: crm_users
+      MYSQL_DATABASE: users_db                # unified name
+      MYSQL_USER: crm_user
+      MYSQL_PASSWORD: crm_password
     ports:
       - "3307:3306"
     volumes:
@@ -14,29 +16,33 @@ services:
     networks:
       - crm_network
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -pcrm_password --silent"]
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -ucrm_user -pcrm_password --silent"]
       interval: 5s
       timeout: 5s
-      retries: 20
-      start_period: 10s
+      retries: 25
+      start_period: 15s
 
   users_service:
     build: .
     container_name: users_service
+    env_file:
+      - .env
     environment:
+      - DB_NAME=users_db
+      - DB_USER=crm_user
+      - DB_PASSWORD=crm_password
       - DB_HOST=mysql_users
       - DB_PORT=3306
-      - DB_USER=root
-      - DB_PASSWORD=crm_password
+    depends_on:
+      mysql_users:
+        condition: service_healthy
     volumes:
       - ../../certs:/certs-in:ro
     ports:
       - "8001:8000"
-    depends_on:
-      mysql_users:
-        condition: service_healthy
     networks:
       - crm_network
+    restart: unless-stopped
 
 volumes:
   mysql_users_data:
