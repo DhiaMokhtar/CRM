@@ -98,14 +98,16 @@ REST_FRAMEWORK = {
 
 # CORS Configuration for HTTPS
 # REMOVE wildcard when using credentials
-# CORS_ALLOW_ALL_ORIGINS = True
+# CORS_ALLOW_ALL_ORIGINS = True  # Comment this out
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
     "https://localhost:4200",
     "http://localhost:4200",
+    "https://localhost:8001",
+    "https://localhost:8002",
+    "https://localhost:8003",
+    "https://localhost:8004",
 ]
-# Optional: regex for other local service ports if needed
-# CORS_ALLOWED_ORIGIN_REGEXES = [r"^https?:\/\/localhost:800[2-4]$"]
 
 CORS_ALLOW_HEADERS = [
     'accept',
@@ -128,10 +130,6 @@ SESSION_COOKIE_SECURE = True          # keep True for HTTPS
 CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_SAMESITE = "None"
 CSRF_COOKIE_SAMESITE = "None"
-
-# If you also want HTTP (dev), temporarily:
-# SESSION_COOKIE_SECURE = False
-# CSRF_COOKIE_SECURE = False
 
 CSRF_TRUSTED_ORIGINS = [
     "https://localhost:4200",

@@ -299,19 +299,20 @@ export class TeacherComponent implements OnInit {
   uploadContent(chapter: Chapter) {
     if (chapter.selectedFile) {
       const formData = new FormData();
-      formData.append('title', chapter.selectedFile.name);
+      formData.append('title', chapter.selectedFile.name.replace(/\.[^/.]+$/, ''));
       formData.append('chapter', chapter.id.toString());
-      formData.append('pdf_file', chapter.selectedFile);
-      
+      formData.append('pdf_file', chapter.selectedFile);   // Correct field name
+
       this.apiService.createCourseMaterial(formData).subscribe({
-        next: (response: any) => {
+        next: () => {
           this.loadCourseMaterials(chapter);
           chapter.isAddingContent = false;
           delete chapter.selectedFile;
         },
         error: (error) => {
           console.error('Error uploading content:', error);
-          alert('Failed to upload file');
+          console.error('Error details:', error.error);
+          alert(`Failed to upload file: ${error.error?.error || error.message || 'Unknown error'}`);
         }
       });
     }

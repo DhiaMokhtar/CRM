@@ -80,15 +80,16 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [],
 }
 
-# CORS Configuration for HTTPS
-CORS_ALLOW_ALL_ORIGINS = True
+# CORS Configuration - remove wildcard with credentials
+# CORS_ALLOW_ALL_ORIGINS = True  # Comment this out
 CORS_ALLOW_CREDENTIALS = True
-
 CORS_ALLOWED_ORIGINS = [
     "https://localhost:4200",
-    "http://localhost:4200",  # Keep HTTP for fallback
-    "https://localhost:8001",  # Users service
-    "http://localhost:8001",   # Users service fallback
+    "http://localhost:4200",
+    "https://localhost:8001",
+    "https://localhost:8002",
+    "https://localhost:8003",
+    "https://localhost:8004",
 ]
 
 CORS_ALLOW_HEADERS = [
@@ -102,17 +103,9 @@ CORS_ALLOW_HEADERS = [
     'x-csrftoken',
     'x-requested-with',
     'cache-control',
-    'pragma',
 ]
 
-CORS_ALLOW_METHODS = [
-    'DELETE',
-    'GET',
-    'OPTIONS',
-    'PATCH',
-    'POST',
-    'PUT',
-]
+CORS_ALLOW_METHODS = ['GET','POST','PUT','PATCH','DELETE','OPTIONS']
 
 # HTTPS Security settings
 SECURE_SSL_REDIRECT = False
@@ -132,6 +125,10 @@ USE_I18N = True
 USE_TZ = True
 APPEND_SLASH = False
 
+# Add file courses directory
+FILE_COURSES_URL = '/fileCourses/'
+FILE_COURSES_ROOT = os.path.join(BASE_DIR, 'fileCourses')
+
 # Media files configuration
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
@@ -140,8 +137,7 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-# Add file courses directory
-FILE_COURSES_URL = '/fileCourses/'
-FILE_COURSES_ROOT = os.path.join(BASE_DIR, 'fileCourses')
-
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Ensure the directory exists
+os.makedirs(FILE_COURSES_ROOT, exist_ok=True)

@@ -24,10 +24,7 @@ urlpatterns = [
     path('api/', include('courses.urls')),
 ]
 
-# Serve media files in development and production
+# Serve media files during development
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-    urlpatterns += static('/fileCourses/', document_root=settings.FILE_COURSES_ROOT)
-else:
-    # For production, you might want to use nginx or another web server
     urlpatterns += static('/fileCourses/', document_root=settings.FILE_COURSES_ROOT)

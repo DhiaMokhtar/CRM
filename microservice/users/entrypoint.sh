@@ -35,6 +35,26 @@ echo "[users] Running migrations"
 python manage.py makemigrations
 python manage.py migrate
 
+echo "[users] Creating default admin user"
+python manage.py shell -c "
+from users.models import Administrator
+if not Administrator.objects.filter(username='root').exists():
+    Administrator.objects.create(username='root', password='root', email='root@admin.com')
+    print('Created admin user: root/root')
+else:
+    print('Admin user root already exists')
+"
+
+echo "[users] Creating default classroom"
+python manage.py shell -c "
+from users.models import ClassRoom
+if not ClassRoom.objects.filter(name='physics class').exists():
+    ClassRoom.objects.create(name='physics class')
+    print('Created default classroom: physics class')
+else:
+    print('Classroom physics class already exists')
+"
+
 echo "[users] Collect static (if any)"
 python manage.py collectstatic --noinput || true
 

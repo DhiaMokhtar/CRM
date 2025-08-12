@@ -124,8 +124,8 @@ class LoginView(APIView):
                         token,
                         max_age=86400,
                         httponly=True,
-                        secure=False,
-                        samesite='Lax'
+                        secure=True,      # Changed to True for HTTPS
+                        samesite='None'   # Changed to None for cross-site
                     )
                     return response
                 else:

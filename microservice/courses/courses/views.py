@@ -17,46 +17,60 @@ logger = logging.getLogger(__name__)
 class CourseMaterialViewSet(viewsets.ModelViewSet):
     queryset = Course.objects.all()
     serializer_class = CourseSerializer
-    
+
     def get_queryset(self):
         queryset = Course.objects.all()
         chapter = self.request.query_params.get('chapter', None)
         if chapter is not None:
             queryset = queryset.filter(chapter=chapter)
         return queryset
-    
+
     def create(self, request, *args, **kwargs):
+        # Get the uploaded file from pdf_file field
+        uploaded_file = request.FILES.get('pdf_file')
+        if not uploaded_file:
+            return Response({'error': 'pdf_file field is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Get other fields
+        title = request.data.get('title')
+        chapter_id = request.data.get('chapter')
+
+        if not title:
+            return Response({'error': 'title field is required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not chapter_id:
+            return Response({'error': 'chapter field is required'}, status=status.HTTP_400_BAD_REQUEST)
+
         # Create fileCourses directory if it doesn't exist
-        upload_dir = os.path.join(settings.BASE_DIR, 'fileCourses')
-        if not os.path.exists(upload_dir):
-            os.makedirs(upload_dir)
+        file_courses_dir = os.path.join(settings.BASE_DIR, 'fileCourses')
+        os.makedirs(file_courses_dir, exist_ok=True)
 
-        # Get the uploaded file
-        file = request.FILES.get('pdf_file')
-        if not file:
-            return Response({'error': 'No file provided'}, status=status.HTTP_400_BAD_REQUEST)
+        # Save the file
+        file_path = os.path.join(file_courses_dir, uploaded_file.name)
+        try:
+            with open(file_path, 'wb+') as destination:
+                for chunk in uploaded_file.chunks():
+                    destination.write(chunk)
+        except Exception as e:
+            return Response({'error': f'Failed to save file: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        # Generate file path
-        file_path = os.path.join('fileCourses', file.name)
-        full_path = os.path.join(settings.BASE_DIR, file_path)
-
-        # Save file to disk
-        with open(full_path, 'wb+') as destination:
-            for chunk in file.chunks():
-                destination.write(chunk)
-
-        # Create course record with file path (store as /fileCourses/filename.pdf)
-        data = {
-            'title': request.data.get('title'),
-            'chapter': request.data.get('chapter'),
-            'pdf': f'/fileCourses/{file.name}'  # Store with leading slash for URL
+        # Create the course record with pdf as a string path
+        course_data = {
+            'title': title,
+            'chapter': chapter_id,
+            'pdf': f'/fileCourses/{uploaded_file.name}'  # String path, not file object
         }
-        
-        serializer = self.get_serializer(data=data)
-        serializer.is_valid(raise_exception=True)
-        course = serializer.save()
 
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        serializer = self.get_serializer(data=course_data)
+        if serializer.is_valid():
+            course = serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            # Clean up the uploaded file if serializer validation fails
+            try:
+                os.remove(file_path)
+            except:
+                pass
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class LessonViewSet(viewsets.ModelViewSet):
     queryset = Lesson.objects.all()
