@@ -36,9 +36,9 @@ services:
     ports:
       - "8002:8000"
     volumes:
+      - ../../certs:/certs-in:ro
       - ./fileCourses:/app/fileCourses
       - ./media:/app/media
-      - ../../certs:/certs-in:ro
     depends_on:
       mysql_courses:
         condition: service_healthy
@@ -76,6 +76,7 @@ services:
         ls -la /app/ssl &&
         python manage.py runsslserver 0.0.0.0:8000 --certificate /app/ssl/localhost.pem --key /app/ssl/localhost-key.pem
       "
+    restart: unless-stopped
 
 volumes:
   mysql_courses_data:

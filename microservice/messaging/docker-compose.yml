@@ -36,8 +36,7 @@ services:
     ports:
       - "8003:8000"
     volumes:
-      - ../../localhost.pem:/certs-in/localhost.pem:ro
-      - ../../localhost-key.pem:/certs-in/localhost-key.pem:ro
+      - ../../certs:/certs-in:ro
     depends_on:
       mysql_messaging:
         condition: service_healthy
