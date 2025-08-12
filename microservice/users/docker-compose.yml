@@ -28,41 +28,15 @@ services:
       - DB_PORT=3306
       - DB_USER=root
       - DB_PASSWORD=crm_password
+    volumes:
+      - ../../certs:/certs-in:ro
     ports:
       - "8001:8000"
     depends_on:
       mysql_users:
         condition: service_healthy
-    command: >
-      sh -c "
-        set -e
-        echo 'DNS & port check...' &&
-        getent hosts mysql_users || true &&
-        (apk add --no-cache busybox-extras 2>/dev/null || true; nc -vz mysql_users 3306 || true) &&
-        echo 'Waiting for MySQL...' &&
-        for i in $(seq 1 40); do
-          if mysqladmin ping -h mysql_users -u root -pcrm_password --silent; then
-            echo 'mysqld is alive'; break; fi;
-          echo \"[Attempt $i] MySQL not ready\"; sleep 2;
-        done &&
-        mysqladmin ping -h mysql_users -u root -pcrm_password --silent || { echo 'MySQL never ready'; exit 1; } &&
-        echo 'Making migrations...' && python manage.py makemigrations &&
-        echo 'Running migrations...' && python manage.py migrate &&
-        mkdir -p /app/ssl &&
-        rm -f /app/ssl/localhost.pem /app/ssl/localhost-key.pem &&
-        if [ -f /certs-in/localhost.pem ] && [ -f /certs-in/localhost-key.pem ]; then
-          install -m 600 /certs-in/localhost.pem /app/ssl/localhost.pem &&
-          install -m 600 /certs-in/localhost-key.pem /app/ssl/localhost-key.pem;
-        else
-          echo 'Generating self-signed cert' &&
-          openssl req -x509 -nodes -newkey rsa:2048 -days 365 \
-            -keyout /app/ssl/localhost-key.pem \
-            -out /app/ssl/localhost.pem \
-            -subj '/CN=localhost';
-        fi &&
-        ls -la /app/ssl &&
-        python manage.py runsslserver 0.0.0.0:8000 --certificate /app/ssl/localhost.pem --key /app/ssl/localhost-key.pem
-      "
+    networks:
+      - crm_network
 
 volumes:
   mysql_users_data:
