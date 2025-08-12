@@ -29,8 +29,8 @@ services:
       - SECRET_KEY=django-insecure-courses-key
       - DEBUG=True
       - DB_NAME=courses_db
-      - DB_USER=root
-      - DB_PASSWORD=password
+      - DB_USER=crm_user            # switched
+      - DB_PASSWORD=crm_password    # switched
       - DB_HOST=mysql_courses
       - DB_PORT=3306
     ports:

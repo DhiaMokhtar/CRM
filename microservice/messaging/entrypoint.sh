@@ -1,18 +1,28 @@
 #!/usr/bin/env bash
 set -e
 DB_HOST="${DB_HOST:-mysql_messaging}"
-DB_USER="${DB_USER:-root}"
-DB_PASSWORD="${DB_PASSWORD:-password}"
-MAX_TRIES=40
+DB_USER="${DB_USER:-crm_user}"
+DB_PASSWORD="${DB_PASSWORD:-crm_password}"
+MAX_TRIES=60
 
-echo "[messaging] Waiting for MySQL at $DB_HOST..."
+echo "$(date +'%F %T') | [messaging] Waiting for MySQL at $DB_HOST user=$DB_USER"
+echo "$(date +'%F %T') | [messaging] DNS: $(getent hosts "$DB_HOST" || echo 'NOT FOUND')"
+
 for i in $(seq 1 $MAX_TRIES); do
-  if mysqladmin ping -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASSWORD" --silent; then
-    echo "[messaging] MySQL ready"; break
+  if mysqladmin ping -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASSWORD" --silent 2>/dev/null; then
+    echo "$(date +'%F %T') | [messaging] MySQL ready after $i attempt(s)"
+    break
   fi
-  echo "[messaging] Attempt $i/$MAX_TRIES"; sleep 2
+  if (( i % 5 == 0 )); then
+    (echo > /dev/tcp/"$DB_HOST"/3306) >/dev/null 2>&1 && echo "$(date +'%F %T') | [messaging] Port 3306 open"
+  fi
+  sleep 2
 done
-mysqladmin ping -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASSWORD" --silent || { echo "[messaging] DB not reachable"; exit 1; }
+
+if ! mysqladmin ping -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASSWORD" --silent 2>/dev/null; then
+  echo "[messaging] ERROR: DB not reachable with provided credentials"
+  exit 1
+fi
 
 echo "[messaging] Migrations"
 python manage.py makemigrations
@@ -31,6 +41,4 @@ else
     -out /app/ssl/localhost.pem \
     -subj "/CN=localhost"
 fi
-ls -l /app/ssl
-echo "[messaging] Starting HTTPS server"
 exec python manage.py runsslserver 0.0.0.0:8000 --certificate /app/ssl/localhost.pem --key /app/ssl/localhost-key.pem
