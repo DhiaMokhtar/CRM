@@ -55,27 +55,15 @@ pipeline {
         }
 
         stage('Build Microservices') {
-            parallel {
-                stage('Users Service') {
-                    steps {
-                        sh "docker-compose -f ${USERS_COMPOSE} build"
-                    }
-                }
-                stage('Courses Service') {
-                    steps {
-                        sh "docker-compose -f ${COURSES_COMPOSE} build"
-                    }
-                }
-                stage('Homework Service') {
-                    steps {
-                        sh "docker-compose -f ${HOMEWORK_COMPOSE} build"
-                    }
-                }
-                stage('Messaging Service') {
-                    steps {
-                        sh "docker-compose -f ${MESSAGING_COMPOSE} build"
-                    }
-                }
+            steps {
+                sh '''
+                  set -e
+                  export DOCKER_BUILDKIT=0
+                  docker-compose -f microservice/users/docker-compose.yml build --no-cache
+                  docker-compose -f microservice/courses/docker-compose.yml build --no-cache
+                  docker-compose -f microservice/messaging/docker-compose.yml build --no-cache
+                  docker-compose -f microservice/homework/docker-compose.yml build --no-cache
+                '''
             }
         }
 

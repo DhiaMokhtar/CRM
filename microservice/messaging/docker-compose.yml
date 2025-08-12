@@ -20,26 +20,26 @@ services:
       interval: 5s
       timeout: 5s
       retries: 20
-      start_period: 10s
+      start_period: 15s
 
   messaging_service:
     build: .
     container_name: messaging_service
     environment:
-      - SECRET_KEY=django-insecure-1+e#)73aknts5v9id(oqr#*dg2_pqzk86h-zrq^5^15s_v&&1%
-      - DEBUG=True
       - DB_NAME=messaging_db
-      - DB_USER=crm_user           # switched
-      - DB_PASSWORD=crm_password   # switched
+      - DB_USER=crm_user
+      - DB_PASSWORD=crm_password
       - DB_HOST=mysql_messaging
       - DB_PORT=3306
+    depends_on:
+      mysql_messaging:
+        condition: service_healthy
     ports:
       - "8003:8000"
     volumes:
       - ../../certs:/certs-in:ro
-    depends_on:
-      mysql_messaging:
-        condition: service_healthy
+    networks:
+      - crm_network
     restart: unless-stopped
 
 volumes:

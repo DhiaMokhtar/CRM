@@ -20,28 +20,28 @@ services:
       interval: 5s
       timeout: 5s
       retries: 20
-      start_period: 10s
+      start_period: 15s
 
   courses_service:
     build: .
     container_name: courses_service
     environment:
-      - SECRET_KEY=django-insecure-courses-key
-      - DEBUG=True
       - DB_NAME=courses_db
-      - DB_USER=crm_user            # switched
-      - DB_PASSWORD=crm_password    # switched
+      - DB_USER=crm_user
+      - DB_PASSWORD=crm_password
       - DB_HOST=mysql_courses
       - DB_PORT=3306
+    depends_on:
+      mysql_courses:
+        condition: service_healthy
     ports:
       - "8002:8000"
     volumes:
       - ../../certs:/certs-in:ro
       - ./fileCourses:/app/fileCourses
       - ./media:/app/media
-    depends_on:
-      mysql_courses:
-        condition: service_healthy
+    networks:
+      - crm_network
     restart: unless-stopped
 
 volumes:
