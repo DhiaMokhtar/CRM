@@ -15,11 +15,11 @@ done
 mysqladmin ping -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASSWORD" --silent || { echo "[courses] DB not reachable"; exit 1; }
 
 echo "[courses] Migrations"
-python [manage.py](http://_vscodecontentref_/0) makemigrations
-python [manage.py](http://_vscodecontentref_/1) migrate
+python manage.py makemigrations
+python manage.py migrate
 
 echo "[courses] Collect static"
-python [manage.py](http://_vscodecontentref_/2) collectstatic --noinput
+python manage.py collectstatic --noinput
 
 echo "[courses] SSL setup"
 mkdir -p /app/ssl
@@ -36,4 +36,4 @@ else
 fi
 ls -l /app/ssl
 echo "[courses] Starting HTTPS server"
-exec python [manage.py](http://_vscodecontentref_/3) runsslserver 0.0.0.0:8000 --certificate /app/ssl/localhost.pem --key /app/ssl/localhost-key.pem
+exec python manage.py runsslserver 0.0.0.0:8000 --certificate /app/ssl/localhost.pem --key /app/ssl/localhost-key.pem
