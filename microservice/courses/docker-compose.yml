@@ -17,10 +17,10 @@ services:
       - crm_network
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-ppassword"]
-      timeout: 20s
-      retries: 10
-      interval: 10s
-      start_period: 40s
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
 
   courses_service:
     build: .
@@ -39,32 +39,41 @@ services:
       - ./fileCourses:/app/fileCourses
       - ./media:/app/media
       - ../../certs:/certs-in:ro
+    depends_on:
+      mysql_courses:
+        condition: service_healthy
     command: >
       sh -c "
-        echo 'Waiting for MySQL to be ready...' &&
-        while ! mysqladmin ping -h mysql_courses -u root -ppassword --silent; do
-          echo 'Waiting for MySQL...' && sleep 2
+        set -e
+        echo 'Resolving mysql_courses...' &&
+        getent hosts mysql_courses || true &&
+        echo 'Testing port 3306...' &&
+        (apk add --no-cache busybox-extras 2>/dev/null || true; nc -vz mysql_courses 3306 || true) &&
+        echo 'Waiting for MySQL to be healthy...' &&
+        for i in $(seq 1 40); do
+          if mysqladmin ping -h mysql_courses -u root -ppassword --silent; then
+            echo 'mysqld is alive'; break; fi;
+          echo \"[Attempt $i] MySQL not ready yet\"; sleep 2;
         done &&
-        echo 'MySQL is ready!' &&
+        mysqladmin ping -h mysql_courses -u root -ppassword --silent || { echo 'MySQL never became ready'; exit 1; } &&
         echo 'Making migrations...' && python manage.py makemigrations &&
         echo 'Running migrations...' && python manage.py migrate &&
         echo 'Collecting static files...' && python manage.py collectstatic --noinput &&
-        echo 'Creating data directories...' && mkdir -p /app/fileCourses /app/media /app/ssl &&
-        echo 'Listing mounted certs dir (if any)...' && ls -la /certs-in || true &&
-        echo 'Preparing SSL certs (copy or generate)...' &&
+        mkdir -p /app/fileCourses /app/media /app/ssl &&
+        echo 'Listing mounted certs dir...' && ls -la /certs-in || true &&
+        echo 'Preparing SSL certs...' &&
         rm -f /app/ssl/localhost.pem /app/ssl/localhost-key.pem &&
         if [ -f /certs-in/localhost.pem ] && [ -f /certs-in/localhost-key.pem ]; then
-           install -m 600 /certs-in/localhost.pem /app/ssl/localhost.pem &&
-           install -m 600 /certs-in/localhost-key.pem /app/ssl/localhost-key.pem;
+          install -m 600 /certs-in/localhost.pem /app/ssl/localhost.pem &&
+          install -m 600 /certs-in/localhost-key.pem /app/ssl/localhost-key.pem;
         else
-           echo 'Mounted certs missing -> generating self-signed cert' &&
-           openssl req -x509 -nodes -newkey rsa:2048 -days 365 \
-             -keyout /app/ssl/localhost-key.pem \
-             -out /app/ssl/localhost.pem \
-             -subj '/CN=localhost';
+          echo 'Mounted certs missing -> generating self-signed cert' &&
+          openssl req -x509 -nodes -newkey rsa:2048 -days 365 \
+            -keyout /app/ssl/localhost-key.pem \
+            -out /app/ssl/localhost.pem \
+            -subj '/CN=localhost';
         fi &&
         ls -la /app/ssl &&
-        echo 'Starting Django server with HTTPS...' &&
         python manage.py runsslserver 0.0.0.0:8000 --certificate /app/ssl/localhost.pem --key /app/ssl/localhost-key.pem
       "
 
