@@ -84,8 +84,8 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': config('DB_NAME', default='users_db'),
-        'USER': config('DB_USER', default='root'),
-        'PASSWORD': config('DB_PASSWORD', default='password'),
+        'USER': config('DB_USER', default='crm_user'),
+        'PASSWORD': config('DB_PASSWORD', default='crm_password'),
         'HOST': config('DB_HOST', default='mysql_users'),
         'PORT': config('DB_PORT', default='3306'),
     }
@@ -97,13 +97,15 @@ REST_FRAMEWORK = {
 }
 
 # CORS Configuration for HTTPS
-CORS_ALLOW_ALL_ORIGINS = True
+# REMOVE wildcard when using credentials
+# CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
-
 CORS_ALLOWED_ORIGINS = [
     "https://localhost:4200",
-    "http://localhost:4200",  # Keep HTTP for fallback
+    "http://localhost:4200",
 ]
+# Optional: regex for other local service ports if needed
+# CORS_ALLOWED_ORIGIN_REGEXES = [r"^https?:\/\/localhost:800[2-4]$"]
 
 CORS_ALLOW_HEADERS = [
     'accept',
@@ -119,25 +121,22 @@ CORS_ALLOW_HEADERS = [
     'pragma',
 ]
 
-CORS_ALLOW_METHODS = [
-    'DELETE',
-    'GET',
-    'OPTIONS',
-    'PATCH',
-    'POST',
-    'PUT',
-]
+CORS_ALLOW_METHODS = ['GET','POST','PUT','PATCH','DELETE','OPTIONS']
 
-# HTTPS Security settings
-SECURE_SSL_REDIRECT = False  # Keep False for development
-SESSION_COOKIE_SECURE = True  # Enable for HTTPS cookies
-CSRF_COOKIE_SECURE = True    # Enable for HTTPS CSRF
-SECURE_BROWSER_XSS_FILTER = True
-SECURE_CONTENT_TYPE_NOSNIFF = True
+# Cookie / session tuning for cross-site (Angular at 4200)
+SESSION_COOKIE_SECURE = True          # keep True for HTTPS
+CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SAMESITE = "None"
+CSRF_COOKIE_SAMESITE = "None"
+
+# If you also want HTTP (dev), temporarily:
+# SESSION_COOKIE_SECURE = False
+# CSRF_COOKIE_SECURE = False
 
 CSRF_TRUSTED_ORIGINS = [
-    'https://localhost:4200',
-    'https://localhost:8001',
+    "https://localhost:4200",
+    "https://localhost:8001",
+    "http://localhost:4200",
 ]
 
 TIME_ZONE = 'UTC'
