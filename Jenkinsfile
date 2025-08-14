@@ -146,9 +146,22 @@ pipeline {
                     docker container prune -f
                     docker volume prune -f
                     
-                    # Recreate network
-                    docker network rm crm_network 2>/dev/null || true
-                    docker network create crm_network
+                    # Handle network cleanup properly
+                    if docker network ls | grep -q crm_network; then
+                        echo "🔗 Network crm_network exists, checking if it's in use..."
+                        # Only remove if no containers are using it
+                        if [ -z "$(docker network inspect crm_network --format='{{range .Containers}}{{.Name}} {{end}}')" ]; then
+                            echo "🗑️ Removing unused crm_network..."
+                            docker network rm crm_network || true
+                            echo "🔗 Creating fresh crm_network..."
+                            docker network create crm_network
+                        else
+                            echo "🔗 Network crm_network is in use, keeping it..."
+                        fi
+                    else
+                        echo "🔗 Creating crm_network..."
+                        docker network create crm_network
+                    fi
                     
                     echo "🗄️ Starting MySQL databases..."
                     docker-compose -f microservice/users/docker-compose.yml up -d mysql_users
