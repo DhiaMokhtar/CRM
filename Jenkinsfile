@@ -128,6 +128,26 @@ pipeline {
                 }
             }
         }
+
+        stage('Serve Frontend') {
+            steps {
+                dir("${FRONTEND_DIR}") {
+                    sh '''
+                        # Install serve globally if not available
+                        npm install -g serve
+                        
+                        # Serve the built app in background
+                        nohup serve -s dist/frond-end/browser -p 4200 > frontend.log 2>&1 &
+                        
+                        # Wait a moment for server to start
+                        sleep 5
+                        
+                        # Check if it's running
+                        curl -f http://localhost:4200 || echo "Frontend not yet ready"
+                    '''
+                }
+            }
+        }
     }
 
     post {
