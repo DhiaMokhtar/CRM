@@ -136,15 +136,22 @@ pipeline {
         stage('Deploy Frontend') {
             steps {
                 sh '''
-                    # Stop existing frontend container
+                    set -e
+                    echo "🚀 Deploying frontend..."
+                    
+                    # Stop and remove existing container
                     docker stop crm-frontend || true
                     docker rm crm-frontend || true
                     
-                    # Run new frontend container
-                    docker run -d --name crm-frontend \
+                    # Deploy frontend on port 8080 instead of 80
+                    docker run -d \
+                        --name crm-frontend \
                         --network crm_network \
-                        -p 80:80 \
+                        -p 8080:80 \
+                        --restart unless-stopped \
                         crm-frontend:latest
+                    
+                    echo "✅ Frontend deployed on http://localhost:8080"
                 '''
             }
         }
@@ -152,15 +159,20 @@ pipeline {
         stage('Health Check') {
             steps {
                 script {
-                    sh 'sleep 30'
-                    sh 'docker ps'
-                    // Check frontend
-                    sh 'curl -f http://localhost/ || echo "Frontend not ready"'
-                    // Use HTTPS with self-signed (-k) for microservices
-                    sh 'curl -k -f https://localhost:8001/ || echo "Users service not ready"'
-                    sh 'curl -k -f https://localhost:8002/ || echo "Courses service not ready"'
-                    sh 'curl -k -f https://localhost:8003/ || echo "Messaging service not ready"'
-                    sh 'curl -k -f https://localhost:8004/ || echo "Homework service not ready"'
+                    sh '''
+                        echo "🔍 Performing health checks..."
+                        sleep 30
+                        docker ps
+                        
+                        # Check frontend on new port
+                        curl -f http://localhost:8080/ || echo "Frontend not ready"
+                        
+                        # Check microservices (keep existing HTTPS checks)
+                        curl -k -f https://localhost:8001/ || echo "Users service not ready"
+                        curl -k -f https://localhost:8002/ || echo "Courses service not ready"
+                        curl -k -f https://localhost:8003/ || echo "Messaging service not ready"
+                        curl -k -f https://localhost:8004/ || echo "Homework service not ready"
+                    '''
                 }
             }
         }
