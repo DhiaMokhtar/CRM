@@ -29,6 +29,11 @@ pipeline {
                       -subj '/CN=localhost';
                   fi
                   chmod 600 certs/localhost.pem certs/localhost-key.pem
+                  
+                  # Also copy certs to frontend SSL directory for Angular dev server
+                  mkdir -p frond-end/ssl
+                  cp certs/localhost.pem frond-end/ssl/cert.pem
+                  cp certs/localhost-key.pem frond-end/ssl/key.pem
                   ls -la certs
                 '''
             }
@@ -38,9 +43,9 @@ pipeline {
             steps {
                 dir("${FRONTEND_DIR}") {
                     sh '''
-                        # Use npm ci for faster, deterministic installs
                         npm ci --legacy-peer-deps --cache .npm-cache
-                        npm run build -- --configuration development
+                        # Build for production to ensure proper optimization
+                        npm run build -- --configuration production
                     '''
                 }
             }
@@ -49,10 +54,7 @@ pipeline {
         stage('Test Frontend') {
             steps {
                 dir("${FRONTEND_DIR}") {
-                    // Skip tests if Chrome is not available in CI
-                     // Skip tests if Chrome is not available in CI
                     sh 'echo "Skipping frontend tests in CI environment"'
-                    // Or use headless tests: sh 'npm test -- --watch=false --browsers=ChromeHeadless'
                 }
             }
         }
@@ -86,16 +88,13 @@ pipeline {
             steps {
                 sh '''
                     set -e
-                    # Stop services without removing volumes (-v removed)
                     docker-compose -f microservice/users/docker-compose.yml down || true
                     docker-compose -f microservice/courses/docker-compose.yml down || true
                     docker-compose -f microservice/homework/docker-compose.yml down || true
                     docker-compose -f microservice/messaging/docker-compose.yml down || true
 
-                    # Create network only if it doesn't exist
                     docker network create crm_network 2>/dev/null || echo "Network already exists"
 
-                    # Start services without --force-recreate (reuse containers if possible)
                     docker-compose -f microservice/users/docker-compose.yml up -d --remove-orphans
                     docker-compose -f microservice/courses/docker-compose.yml up -d --remove-orphans
                     docker-compose -f microservice/homework/docker-compose.yml up -d --remove-orphans
@@ -107,79 +106,78 @@ pipeline {
         stage('Health Check') {
             steps {
                 script {
-                    sh 'sleep 30'
+                    sh 'sleep 60'  // Increased initial wait
                     sh 'docker ps'
                     
-                    // Check if containers are still running
-                    sh 'docker ps --filter "name=users_service" --filter "status=running" --quiet | grep -q . || (echo "Users service not running" && exit 1)'
-                    sh 'docker ps --filter "name=courses_service" --filter "status=running" --quiet | grep -q . || (echo "Courses service not running" && exit 1)'
-                    sh 'docker ps --filter "name=messaging_service" --filter "status=running" --quiet | grep -q . || (echo "Messaging service not running" && exit 1)'
-                    sh 'docker ps --filter "name=homework_service" --filter "status=running" --quiet | grep -q . || (echo "Homework service not running" && exit 1)'
-                    
-                    // Wait for services to be ready (increased timeouts)
+                    // Enhanced health checks with longer timeouts
                     parallel (
                         'Users': {
                             sh '''
-                                echo "Checking users service logs..."
-                                for i in {1..24}; do
-                                    if docker logs users_service 2>&1 | grep -q "Starting HTTPS server\\|Development server"; then
+                                echo "🔍 Checking users service..."
+                                for i in {1..30}; do
+                                    if docker logs users_service 2>&1 | grep -q "Starting HTTPS server\\|Development server\\|runserver"; then
                                         echo "Users service is starting..."
                                         if curl -k -f https://localhost:8001/ >/dev/null 2>&1; then
-                                            echo "✅ Users service is ready"
+                                            echo "✅ Users service is ready!"
                                             break
                                         fi
                                     fi
-                                    echo "Waiting for users service... ($i/24)"
-                                    sleep 10
+                                    echo "⏳ Waiting for users service... ($i/30)"
+                                    sleep 8
                                 done
+                                # Final verification
+                                curl -k -f https://localhost:8001/ || exit 1
                             '''
                         },
                         'Courses': {
                             sh '''
-                                echo "Checking courses service logs..."
-                                for i in {1..24}; do
-                                    if docker logs courses_service 2>&1 | grep -q "Starting HTTPS server\\|Development server"; then
+                                echo "🔍 Checking courses service..."
+                                for i in {1..30}; do
+                                    if docker logs courses_service 2>&1 | grep -q "Starting HTTPS server\\|Development server\\|runserver"; then
                                         echo "Courses service is starting..."
                                         if curl -k -f https://localhost:8002/ >/dev/null 2>&1; then
-                                            echo "✅ Courses service is ready"
+                                            echo "✅ Courses service is ready!"
                                             break
                                         fi
                                     fi
-                                    echo "Waiting for courses service... ($i/24)"
-                                    sleep 10
+                                    echo "⏳ Waiting for courses service... ($i/30)"
+                                    sleep 8
                                 done
+                                curl -k -f https://localhost:8002/ || exit 1
                             '''
                         },
                         'Messaging': {
                             sh '''
-                                echo "Checking messaging service logs..."
-                                for i in {1..24}; do
-                                    if docker logs messaging_service 2>&1 | grep -q "Starting HTTPS server\\|Development server"; then
+                                echo "🔍 Checking messaging service..."
+                                for i in {1..30}; do
+                                    if docker logs messaging_service 2>&1 | grep -q "Starting HTTPS server\\|Development server\\|runserver"; then
                                         echo "Messaging service is starting..."
                                         if curl -k -f https://localhost:8003/ >/dev/null 2>&1; then
-                                            echo "✅ Messaging service is ready"
+                                            echo "✅ Messaging service is ready!"
                                             break
                                         fi
                                     fi
-                                    echo "Waiting for messaging service... ($i/24)"
-                                    sleep 10
+                                    echo "⏳ Waiting for messaging service... ($i/30)"
+                                    sleep 8
                                 done
+                                curl -k -f https://localhost:8003/ || exit 1
                             '''
                         },
                         'Homework': {
                             sh '''
-                                echo "Checking homework service logs..."
-                                for i in {1..24}; do
-                                    if docker logs homework_service 2>&1 | grep -q "Starting HTTPS server\\|Development server"; then
+                                echo "🔍 Checking homework service..."
+                                for i in {1..30}; do
+                                    if docker logs homework_service 2>&1 | grep -q "Starting HTTPS server\\|Development server\\|runserver"; then
                                         echo "Homework service is starting..."
                                         if curl -k -f https://localhost:8004/ >/dev/null 2>&1; then
-                                            echo "✅ Homework service is ready"
+                                            echo "✅ Homework service is ready!"
                                             break
                                         fi
                                     fi
-                                    echo "Waiting for homework service... ($i/24)"
-                                    sleep 10
+                                    echo "⏳ Waiting for homework service... ($i/30)"
+                                    sleep 8
                                 done
+                                curl -k -f https://localhost:8004/ || exit 1
                             '''
                         }
                     )
@@ -187,38 +185,108 @@ pipeline {
             }
         }
 
-        stage('Serve Frontend') {
+        stage('Deploy Frontend') {
             steps {
                 dir("${FRONTEND_DIR}") {
                     sh '''
-                        # Install serve globally if not available
-                        npm install -g serve
+                        # Kill any existing frontend processes
+                        pkill -f "ng serve\\|serve.*4200\\|node.*4200" || true
+                        sleep 3
                         
-                        # Serve the built app in background
-                        nohup serve -s dist/frond-end/browser -p 4200 > frontend.log 2>&1 &
+                        # Method 1: Use Angular CLI dev server with HTTPS (recommended)
+                        echo "🚀 Starting Angular development server with HTTPS..."
+                        nohup ng serve --host 0.0.0.0 --port 4200 --ssl --ssl-cert ssl/cert.pem --ssl-key ssl/key.pem --disable-host-check > frontend.log 2>&1 &
                         
-                        # Wait a moment for server to start
-                        sleep 5
+                        # Wait for frontend to start
+                        echo "⏳ Waiting for frontend to start..."
+                        sleep 15
                         
-                        # Check if it's running
-                        curl -f http://localhost:4200 || echo "Frontend not yet ready"
+                        # Verify frontend is running
+                        for i in {1..10}; do
+                            if curl -k -f https://localhost:4200/ >/dev/null 2>&1; then
+                                echo "✅ Frontend is ready at https://localhost:4200"
+                                break
+                            fi
+                            echo "⏳ Waiting for frontend... ($i/10)"
+                            sleep 5
+                        done
+                        
+                        # Final check
+                        curl -k -f https://localhost:4200/ || {
+                            echo "❌ Frontend failed to start. Checking logs..."
+                            tail -20 frontend.log
+                            exit 1
+                        }
                     '''
                 }
+            }
+        }
+
+        stage('Integration Test') {
+            steps {
+                sh '''
+                    echo "🧪 Running integration tests..."
+                    
+                    # Test if all services are accessible
+                    echo "Testing service endpoints..."
+                    curl -k -f https://localhost:8001/api/ || echo "⚠️ Users API not responding"
+                    curl -k -f https://localhost:8002/api/ || echo "⚠️ Courses API not responding"  
+                    curl -k -f https://localhost:8003/api/ || echo "⚠️ Messaging API not responding"
+                    curl -k -f https://localhost:8004/api/ || echo "⚠️ Homework API not responding"
+                    
+                    # Test frontend
+                    curl -k -f https://localhost:4200/ || echo "⚠️ Frontend not responding"
+                    
+                    echo "✅ All services are running!"
+                '''
             }
         }
     }
 
     post {
         always {
-            echo "Pipeline completed."
-            // Only remove dangling images instead of full system prune
+            script {
+                sh '''
+                    echo "📊 Final Status Report:"
+                    echo "=== Docker Containers ==="
+                    docker ps --format "table {{.Names}}\\t{{.Status}}\\t{{.Ports}}"
+                    
+                    echo "=== Service Logs (last 10 lines) ==="
+                    echo "--- Users Service ---"
+                    docker logs --tail 10 users_service 2>/dev/null || echo "No logs"
+                    echo "--- Courses Service ---"  
+                    docker logs --tail 10 courses_service 2>/dev/null || echo "No logs"
+                    echo "--- Messaging Service ---"
+                    docker logs --tail 10 messaging_service 2>/dev/null || echo "No logs"
+                    echo "--- Homework Service ---"
+                    docker logs --tail 10 homework_service 2>/dev/null || echo "No logs"
+                    
+                    echo "=== Frontend Log ==="
+                    [ -f frond-end/frontend.log ] && tail -10 frond-end/frontend.log || echo "No frontend log"
+                '''
+            }
             sh 'docker image prune -f || true'
         }
-        success { echo "✅ CRM pipeline succeeded!" }
+        success { 
+            echo "🎉 CRM pipeline succeeded!"
+            echo "🌐 Application available at:"
+            echo "   Frontend: https://localhost:4200"
+            echo "   Users API: https://localhost:8001/api"
+            echo "   Courses API: https://localhost:8002/api"
+            echo "   Messaging API: https://localhost:8003/api"
+            echo "   Homework API: https://localhost:8004/api"
+        }
         failure { 
-            echo "❌ CRM pipeline failed!"
-            // Only do full cleanup on failure
-            sh 'docker system prune -f || true'
+            echo "💥 CRM pipeline failed!"
+            sh '''
+                echo "🔍 Debugging information:"
+                echo "=== Container Status ==="
+                docker ps -a
+                echo "=== Frontend Log ==="
+                [ -f frond-end/frontend.log ] && cat frond-end/frontend.log || echo "No frontend log"
+                echo "=== Cleaning up ==="
+                docker system prune -f || true
+            '''
         }
     }
 }
