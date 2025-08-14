@@ -117,18 +117,45 @@ pipeline {
             steps {
                 sh '''
                     set -e
+                    echo "🧹 Cleaning up existing containers..."
+                    
+                    # Stop and remove all services
                     docker-compose -f microservice/users/docker-compose.yml down -v || true
                     docker-compose -f microservice/courses/docker-compose.yml down -v || true
                     docker-compose -f microservice/homework/docker-compose.yml down -v || true
                     docker-compose -f microservice/messaging/docker-compose.yml down -v || true
-
+                    
+                    # Clean up any orphaned containers
+                    docker container prune -f
+                    docker volume prune -f
+                    
+                    # Recreate network
                     docker network rm crm_network 2>/dev/null || true
                     docker network create crm_network
-
-                    docker-compose -f microservice/users/docker-compose.yml up -d --remove-orphans --force-recreate
-                    docker-compose -f microservice/courses/docker-compose.yml up -d --remove-orphans --force-recreate
-                    docker-compose -f microservice/homework/docker-compose.yml up -d --remove-orphans --force-recreate
-                    docker-compose -f microservice/messaging/docker-compose.yml up -d --remove-orphans --force-recreate
+                    
+                    echo "🚀 Starting MySQL databases first..."
+                    
+                    # Start MySQL containers first and wait for them to be ready
+                    docker-compose -f microservice/users/docker-compose.yml up -d mysql_users
+                    docker-compose -f microservice/courses/docker-compose.yml up -d mysql_courses  
+                    docker-compose -f microservice/homework/docker-compose.yml up -d mysql_homework
+                    docker-compose -f microservice/messaging/docker-compose.yml up -d mysql_messaging
+                    
+                    echo "⏳ Waiting 60 seconds for MySQL containers to initialize..."
+                    sleep 60
+                    
+                    # Check MySQL health
+                    docker ps | grep mysql
+                    
+                    echo "🚀 Starting application services..."
+                    
+                    # Start application services
+                    docker-compose -f microservice/users/docker-compose.yml up -d users_service
+                    docker-compose -f microservice/courses/docker-compose.yml up -d courses_service
+                    docker-compose -f microservice/homework/docker-compose.yml up -d homework_service  
+                    docker-compose -f microservice/messaging/docker-compose.yml up -d messaging_service
+                    
+                    echo "✅ All services started"
                 '''
             }
         }
