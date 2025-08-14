@@ -143,15 +143,19 @@ pipeline {
                     docker stop crm-frontend || true
                     docker rm crm-frontend || true
                     
-                    # Deploy frontend on port 8080 instead of 80
+                    # Stop any container using port 8080
+                    docker ps --format "table {{.Names}}\t{{.Ports}}" | grep ":8080->" | awk '{print $1}' | xargs -r docker stop || true
+                    docker ps -a --format "table {{.Names}}\t{{.Ports}}" | grep ":8080->" | awk '{print $1}' | xargs -r docker rm || true
+                    
+                    # Deploy frontend on port 8081 instead of 8080
                     docker run -d \
                         --name crm-frontend \
                         --network crm_network \
-                        -p 8080:80 \
+                        -p 8081:80 \
                         --restart unless-stopped \
                         crm-frontend:latest
                     
-                    echo "✅ Frontend deployed on http://localhost:8080"
+                    echo "✅ Frontend deployed on http://localhost:8081"
                 '''
             }
         }
@@ -165,7 +169,7 @@ pipeline {
                         docker ps
                         
                         # Check frontend on new port
-                        curl -f http://localhost:8080/ || echo "Frontend not ready"
+                        curl -f http://localhost:8081/ || echo "Frontend not ready"
                         
                         # Check microservices (keep existing HTTPS checks)
                         curl -k -f https://localhost:8001/ || echo "Users service not ready"
