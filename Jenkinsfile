@@ -106,78 +106,128 @@ pipeline {
         stage('Health Check') {
             steps {
                 script {
-                    sh 'sleep 60'  // Increased initial wait
+                    sh 'sleep 120'  // Increased wait time for MySQL connections
                     sh 'docker ps'
                     
-                    // Enhanced health checks with longer timeouts
+                    // Fixed bash loop syntax and increased timeout
                     parallel (
                         'Users': {
                             sh '''
                                 echo "🔍 Checking users service..."
-                                for i in {1..30}; do
-                                    if docker logs users_service 2>&1 | grep -q "Starting HTTPS server\\|Development server\\|runserver"; then
-                                        echo "Users service is starting..."
-                                        if curl -k -f https://localhost:8001/ >/dev/null 2>&1; then
+                                for i in $(seq 1 40); do
+                                    echo "⏳ Checking users service... ($i/40)"
+                                    
+                                    # Check if service logs show it's ready
+                                    if docker logs users_service 2>&1 | grep -q "Starting development server\\|Starting HTTPS server\\|Quit the server\\|runserver"; then
+                                        echo "Users service logs show it's starting..."
+                                        
+                                        # Try to connect
+                                        if curl -k -f --connect-timeout 5 https://localhost:8001/ >/dev/null 2>&1; then
                                             echo "✅ Users service is ready!"
-                                            break
+                                            exit 0
                                         fi
                                     fi
-                                    echo "⏳ Waiting for users service... ($i/30)"
-                                    sleep 8
+                                    
+                                    # Show latest logs for debugging
+                                    if [ $((i % 5)) -eq 0 ]; then
+                                        echo "Latest users service logs:"
+                                        docker logs --tail 3 users_service 2>&1 || echo "No logs yet"
+                                    fi
+                                    
+                                    sleep 10
                                 done
-                                # Final verification
-                                curl -k -f https://localhost:8001/ || exit 1
+                                
+                                echo "❌ Users service timeout after 400 seconds"
+                                echo "Final users service logs:"
+                                docker logs --tail 20 users_service 2>&1
+                                exit 1
                             '''
                         },
                         'Courses': {
                             sh '''
                                 echo "🔍 Checking courses service..."
-                                for i in {1..30}; do
-                                    if docker logs courses_service 2>&1 | grep -q "Starting HTTPS server\\|Development server\\|runserver"; then
-                                        echo "Courses service is starting..."
-                                        if curl -k -f https://localhost:8002/ >/dev/null 2>&1; then
+                                for i in $(seq 1 40); do
+                                    echo "⏳ Checking courses service... ($i/40)"
+                                    
+                                    if docker logs courses_service 2>&1 | grep -q "Starting development server\\|Starting HTTPS server\\|Quit the server\\|runserver"; then
+                                        echo "Courses service logs show it's starting..."
+                                        
+                                        if curl -k -f --connect-timeout 5 https://localhost:8002/ >/dev/null 2>&1; then
                                             echo "✅ Courses service is ready!"
-                                            break
+                                            exit 0
                                         fi
                                     fi
-                                    echo "⏳ Waiting for courses service... ($i/30)"
-                                    sleep 8
+                                    
+                                    if [ $((i % 5)) -eq 0 ]; then
+                                        echo "Latest courses service logs:"
+                                        docker logs --tail 3 courses_service 2>&1 || echo "No logs yet"
+                                    fi
+                                    
+                                    sleep 10
                                 done
-                                curl -k -f https://localhost:8002/ || exit 1
+                                
+                                echo "❌ Courses service timeout after 400 seconds"
+                                echo "Final courses service logs:"
+                                docker logs --tail 20 courses_service 2>&1
+                                exit 1
                             '''
                         },
                         'Messaging': {
                             sh '''
                                 echo "🔍 Checking messaging service..."
-                                for i in {1..30}; do
-                                    if docker logs messaging_service 2>&1 | grep -q "Starting HTTPS server\\|Development server\\|runserver"; then
-                                        echo "Messaging service is starting..."
-                                        if curl -k -f https://localhost:8003/ >/dev/null 2>&1; then
+                                for i in $(seq 1 40); do
+                                    echo "⏳ Checking messaging service... ($i/40)"
+                                    
+                                    if docker logs messaging_service 2>&1 | grep -q "Starting development server\\|Starting HTTPS server\\|Quit the server\\|runserver"; then
+                                        echo "Messaging service logs show it's starting..."
+                                        
+                                        if curl -k -f --connect-timeout 5 https://localhost:8003/ >/dev/null 2>&1; then
                                             echo "✅ Messaging service is ready!"
-                                            break
+                                            exit 0
                                         fi
                                     fi
-                                    echo "⏳ Waiting for messaging service... ($i/30)"
-                                    sleep 8
+                                    
+                                    if [ $((i % 5)) -eq 0 ]; then
+                                        echo "Latest messaging service logs:"
+                                        docker logs --tail 3 messaging_service 2>&1 || echo "No logs yet"
+                                    fi
+                                    
+                                    sleep 10
                                 done
-                                curl -k -f https://localhost:8003/ || exit 1
+                                
+                                echo "❌ Messaging service timeout after 400 seconds"
+                                echo "Final messaging service logs:"
+                                docker logs --tail 20 messaging_service 2>&1
+                                exit 1
                             '''
                         },
                         'Homework': {
                             sh '''
                                 echo "🔍 Checking homework service..."
-                                for i in {1..30}; do
-                                    if docker logs homework_service 2>&1 | grep -q "Starting HTTPS server\\|Development server\\|runserver"; then
-                                        echo "Homework service is starting..."
-                                        if curl -k -f https://localhost:8004/ >/dev/null 2>&1; then
+                                for i in $(seq 1 40); do
+                                    echo "⏳ Checking homework service... ($i/40)"
+                                    
+                                    if docker logs homework_service 2>&1 | grep -q "Starting development server\\|Starting HTTPS server\\|Quit the server\\|runserver"; then
+                                        echo "Homework service logs show it's starting..."
+                                        
+                                        if curl -k -f --connect-timeout 5 https://localhost:8004/ >/dev/null 2>&1; then
                                             echo "✅ Homework service is ready!"
-                                            break
+                                            exit 0
                                         fi
                                     fi
-                                    echo "⏳ Waiting for homework service... ($i/30)"
-                                    sleep 8
+                                    
+                                    if [ $((i % 5)) -eq 0 ]; then
+                                        echo "Latest homework service logs:"
+                                        docker logs --tail 3 homework_service 2>&1 || echo "No logs yet"
+                                    fi
+                                    
+                                    sleep 10
                                 done
-                                curl -k -f https://localhost:8004/ || exit 1
+                                
+                                echo "❌ Homework service timeout after 400 seconds"
+                                echo "Final homework service logs:"
+                                docker logs --tail 20 homework_service 2>&1
+                                exit 1
                             '''
                         }
                     )
@@ -193,30 +243,26 @@ pipeline {
                         pkill -f "ng serve\\|serve.*4200\\|node.*4200" || true
                         sleep 3
                         
-                        # Method 1: Use Angular CLI dev server with HTTPS (recommended)
                         echo "🚀 Starting Angular development server with HTTPS..."
                         nohup ng serve --host 0.0.0.0 --port 4200 --ssl --ssl-cert ssl/cert.pem --ssl-key ssl/key.pem --disable-host-check > frontend.log 2>&1 &
                         
                         # Wait for frontend to start
                         echo "⏳ Waiting for frontend to start..."
-                        sleep 15
+                        sleep 20
                         
                         # Verify frontend is running
-                        for i in {1..10}; do
-                            if curl -k -f https://localhost:4200/ >/dev/null 2>&1; then
+                        for i in $(seq 1 15); do
+                            if curl -k -f --connect-timeout 5 https://localhost:4200/ >/dev/null 2>&1; then
                                 echo "✅ Frontend is ready at https://localhost:4200"
-                                break
+                                exit 0
                             fi
-                            echo "⏳ Waiting for frontend... ($i/10)"
+                            echo "⏳ Waiting for frontend... ($i/15)"
                             sleep 5
                         done
                         
-                        # Final check
-                        curl -k -f https://localhost:4200/ || {
-                            echo "❌ Frontend failed to start. Checking logs..."
-                            tail -20 frontend.log
-                            exit 1
-                        }
+                        echo "❌ Frontend failed to start. Checking logs..."
+                        tail -30 frontend.log
+                        exit 1
                     '''
                 }
             }
@@ -229,15 +275,15 @@ pipeline {
                     
                     # Test if all services are accessible
                     echo "Testing service endpoints..."
-                    curl -k -f https://localhost:8001/api/ || echo "⚠️ Users API not responding"
-                    curl -k -f https://localhost:8002/api/ || echo "⚠️ Courses API not responding"  
-                    curl -k -f https://localhost:8003/api/ || echo "⚠️ Messaging API not responding"
-                    curl -k -f https://localhost:8004/api/ || echo "⚠️ Homework API not responding"
+                    curl -k -f --connect-timeout 10 https://localhost:8001/api/ || echo "⚠️ Users API not responding"
+                    curl -k -f --connect-timeout 10 https://localhost:8002/api/ || echo "⚠️ Courses API not responding"  
+                    curl -k -f --connect-timeout 10 https://localhost:8003/api/ || echo "⚠️ Messaging API not responding"
+                    curl -k -f --connect-timeout 10 https://localhost:8004/api/ || echo "⚠️ Homework API not responding"
                     
                     # Test frontend
-                    curl -k -f https://localhost:4200/ || echo "⚠️ Frontend not responding"
+                    curl -k -f --connect-timeout 10 https://localhost:4200/ || echo "⚠️ Frontend not responding"
                     
-                    echo "✅ All services are running!"
+                    echo "✅ Integration tests completed!"
                 '''
             }
         }
@@ -251,18 +297,18 @@ pipeline {
                     echo "=== Docker Containers ==="
                     docker ps --format "table {{.Names}}\\t{{.Status}}\\t{{.Ports}}"
                     
-                    echo "=== Service Logs (last 10 lines) ==="
+                    echo "=== Service Logs (last 15 lines) ==="
                     echo "--- Users Service ---"
-                    docker logs --tail 10 users_service 2>/dev/null || echo "No logs"
+                    docker logs --tail 15 users_service 2>/dev/null || echo "No logs"
                     echo "--- Courses Service ---"  
-                    docker logs --tail 10 courses_service 2>/dev/null || echo "No logs"
+                    docker logs --tail 15 courses_service 2>/dev/null || echo "No logs"
                     echo "--- Messaging Service ---"
-                    docker logs --tail 10 messaging_service 2>/dev/null || echo "No logs"
+                    docker logs --tail 15 messaging_service 2>/dev/null || echo "No logs"
                     echo "--- Homework Service ---"
-                    docker logs --tail 10 homework_service 2>/dev/null || echo "No logs"
+                    docker logs --tail 15 homework_service 2>/dev/null || echo "No logs"
                     
                     echo "=== Frontend Log ==="
-                    [ -f frond-end/frontend.log ] && tail -10 frond-end/frontend.log || echo "No frontend log"
+                    [ -f frond-end/frontend.log ] && tail -15 frond-end/frontend.log || echo "No frontend log"
                 '''
             }
             sh 'docker image prune -f || true'
@@ -282,10 +328,13 @@ pipeline {
                 echo "🔍 Debugging information:"
                 echo "=== Container Status ==="
                 docker ps -a
+                echo "=== All Service Logs ==="
+                for service in users_service courses_service messaging_service homework_service; do
+                    echo "--- $service ---"
+                    docker logs --tail 30 $service 2>/dev/null || echo "No logs for $service"
+                done
                 echo "=== Frontend Log ==="
                 [ -f frond-end/frontend.log ] && cat frond-end/frontend.log || echo "No frontend log"
-                echo "=== Cleaning up ==="
-                docker system prune -f || true
             '''
         }
     }
