@@ -87,18 +87,35 @@ pipeline {
         }
 
         stage('Build Microservices') {
-            steps {
-                sh '''
-                  set -e
-                  export DOCKER_BUILDKIT=1
-                  export COMPOSE_DOCKER_CLI_BUILD=1
-                  
-                  # Remove --no-cache to enable layer caching
-                  docker-compose -f microservice/users/docker-compose.yml build
-                  docker-compose -f microservice/courses/docker-compose.yml build
-                  docker-compose -f microservice/messaging/docker-compose.yml build
-                  docker-compose -f microservice/homework/docker-compose.yml build
-                '''
+            parallel {
+                stage('Build Users') {
+                    steps {
+                        retry(2) {
+                            sh 'docker-compose -f microservice/users/docker-compose.yml build'
+                        }
+                    }
+                }
+                stage('Build Courses') {
+                    steps {
+                        retry(2) {
+                            sh 'docker-compose -f microservice/courses/docker-compose.yml build'
+                        }
+                    }
+                }
+                stage('Build Messaging') {
+                    steps {
+                        retry(2) {
+                            sh 'docker-compose -f microservice/messaging/docker-compose.yml build'
+                        }
+                    }
+                }
+                stage('Build Homework') {
+                    steps {
+                        retry(2) {
+                            sh 'docker-compose -f microservice/homework/docker-compose.yml build'
+                        }
+                    }
+                }
             }
         }
 
@@ -133,16 +150,34 @@ pipeline {
                     docker network rm crm_network 2>/dev/null || true
                     docker network create crm_network
                     
-                    echo "🗄️ Starting MySQL databases with proper initialization..."
-                    
-                    # Start MySQL containers first
+                    echo "🗄️ Starting MySQL databases..."
                     docker-compose -f microservice/users/docker-compose.yml up -d mysql_users
                     docker-compose -f microservice/courses/docker-compose.yml up -d mysql_courses  
                     docker-compose -f microservice/homework/docker-compose.yml up -d mysql_homework
                     docker-compose -f microservice/messaging/docker-compose.yml up -d mysql_messaging
                     
-                    echo "⏳ Waiting for MySQL containers to fully initialize (120 seconds)..."
-                    sleep 120
+                    echo "⏳ Waiting for MySQL containers (max 120 seconds)..."
+                    
+                    # Smart wait - check every 10 seconds instead of waiting full 120
+                    for i in {1..12}; do
+                        echo "Attempt $i/12..."
+                        
+                        # Test all MySQL connections
+                        if docker exec mysql_users mysqladmin ping -h localhost -u root -pcrm_password --silent 2>/dev/null && \
+                           docker exec mysql_courses mysqladmin ping -h localhost -u root -ppassword --silent 2>/dev/null && \
+                           docker exec mysql_homework mysqladmin ping -h localhost -u root -ppassword --silent 2>/dev/null && \
+                           docker exec mysql_messaging mysqladmin ping -h localhost -u root -ppassword --silent 2>/dev/null; then
+                            echo "✅ All MySQL instances ready in $((i*10)) seconds!"
+                            break
+                        fi
+                        
+                        if [ $i -eq 12 ]; then
+                            echo "❌ MySQL timeout after 120 seconds"
+                            exit 1
+                        fi
+                        
+                        sleep 10
+                    done
                     
                     echo "🔍 Checking MySQL health..."
                     docker ps | grep mysql
