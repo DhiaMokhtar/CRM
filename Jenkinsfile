@@ -107,22 +107,80 @@ pipeline {
         stage('Health Check') {
             steps {
                 script {
-                    sh 'sleep 15'  // Reduced from 30
+                    sh 'sleep 30'
                     sh 'docker ps'
                     
-                    // Parallel health checks
+                    // Check if containers are still running
+                    sh 'docker ps --filter "name=users_service" --filter "status=running" --quiet | grep -q . || (echo "Users service not running" && exit 1)'
+                    sh 'docker ps --filter "name=courses_service" --filter "status=running" --quiet | grep -q . || (echo "Courses service not running" && exit 1)'
+                    sh 'docker ps --filter "name=messaging_service" --filter "status=running" --quiet | grep -q . || (echo "Messaging service not running" && exit 1)'
+                    sh 'docker ps --filter "name=homework_service" --filter "status=running" --quiet | grep -q . || (echo "Homework service not running" && exit 1)'
+                    
+                    // Wait for services to be ready (increased timeouts)
                     parallel (
                         'Users': {
-                            sh 'timeout 30 bash -c "until curl -k -f https://localhost:8001/; do sleep 2; done"'
+                            sh '''
+                                echo "Checking users service logs..."
+                                for i in {1..24}; do
+                                    if docker logs users_service 2>&1 | grep -q "Starting HTTPS server\\|Development server"; then
+                                        echo "Users service is starting..."
+                                        if curl -k -f https://localhost:8001/ >/dev/null 2>&1; then
+                                            echo "✅ Users service is ready"
+                                            break
+                                        fi
+                                    fi
+                                    echo "Waiting for users service... ($i/24)"
+                                    sleep 10
+                                done
+                            '''
                         },
                         'Courses': {
-                            sh 'timeout 30 bash -c "until curl -k -f https://localhost:8002/; do sleep 2; done"'
+                            sh '''
+                                echo "Checking courses service logs..."
+                                for i in {1..24}; do
+                                    if docker logs courses_service 2>&1 | grep -q "Starting HTTPS server\\|Development server"; then
+                                        echo "Courses service is starting..."
+                                        if curl -k -f https://localhost:8002/ >/dev/null 2>&1; then
+                                            echo "✅ Courses service is ready"
+                                            break
+                                        fi
+                                    fi
+                                    echo "Waiting for courses service... ($i/24)"
+                                    sleep 10
+                                done
+                            '''
                         },
                         'Messaging': {
-                            sh 'timeout 30 bash -c "until curl -k -f https://localhost:8003/; do sleep 2; done"'
+                            sh '''
+                                echo "Checking messaging service logs..."
+                                for i in {1..24}; do
+                                    if docker logs messaging_service 2>&1 | grep -q "Starting HTTPS server\\|Development server"; then
+                                        echo "Messaging service is starting..."
+                                        if curl -k -f https://localhost:8003/ >/dev/null 2>&1; then
+                                            echo "✅ Messaging service is ready"
+                                            break
+                                        fi
+                                    fi
+                                    echo "Waiting for messaging service... ($i/24)"
+                                    sleep 10
+                                done
+                            '''
                         },
                         'Homework': {
-                            sh 'timeout 30 bash -c "until curl -k -f https://localhost:8004/; do sleep 2; done"'
+                            sh '''
+                                echo "Checking homework service logs..."
+                                for i in {1..24}; do
+                                    if docker logs homework_service 2>&1 | grep -q "Starting HTTPS server\\|Development server"; then
+                                        echo "Homework service is starting..."
+                                        if curl -k -f https://localhost:8004/ >/dev/null 2>&1; then
+                                            echo "✅ Homework service is ready"
+                                            break
+                                        fi
+                                    fi
+                                    echo "Waiting for homework service... ($i/24)"
+                                    sleep 10
+                                done
+                            '''
                         }
                     )
                 }
