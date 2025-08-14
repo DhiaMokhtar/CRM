@@ -103,54 +103,89 @@ pipeline {
             }
         }
 
+        stage('Debug Database Connection') {
+            steps {
+                sh '''
+                    echo "🔍 Debugging database connections..."
+                    
+                    # Check MySQL container logs
+                    echo "=== MySQL Logs ==="
+                    for db in mysql_users mysql_courses mysql_messaging mysql_homework; do
+                        echo "--- $db ---"
+                        docker logs --tail 10 $db 2>/dev/null || echo "No logs for $db"
+                    done
+                    
+                    # Test direct MySQL connections
+                    echo "=== Direct MySQL Tests ==="
+                    
+                    # Test users database
+                    echo "Testing users database..."
+                    docker exec mysql_users mysql -u crm_user -pcrm_password -e "SELECT 1" users_db || echo "❌ Users DB connection failed"
+                    
+                    # Test courses database  
+                    echo "Testing courses database..."
+                    docker exec mysql_courses mysql -u crm_user -pcrm_password -e "SELECT 1" courses_db || echo "❌ Courses DB connection failed"
+                    
+                    # Test messaging database
+                    echo "Testing messaging database..."
+                    docker exec mysql_messaging mysql -u crm_user -pcrm_password -e "SELECT 1" messaging_db || echo "❌ Messaging DB connection failed"
+                    
+                    # Test homework database
+                    echo "Testing homework database..."
+                    docker exec mysql_homework mysql -u crm_user -pcrm_password -e "SELECT 1" homework_db || echo "❌ Homework DB connection failed"
+                    
+                    echo "=== Network Connectivity ==="
+                    docker network inspect crm_network
+                '''
+            }
+        }
+
         stage('Health Check') {
             steps {
                 script {
-                    sh 'sleep 120'  // Increased wait time for MySQL connections
+                    sh 'sleep 60'  # Reduced wait time since DB issue is not timeout-related
                     sh 'docker ps'
                     
-                    // Fixed bash loop syntax and increased timeout
                     parallel (
                         'Users': {
                             sh '''
                                 echo "🔍 Checking users service..."
-                                for i in $(seq 1 40); do
-                                    echo "⏳ Checking users service... ($i/40)"
+                                for i in $(seq 1 20); do  # Reduced iterations
+                                    echo "⏳ Checking users service... ($i/20)"
                                     
-                                    # Check if service logs show it's ready
-                                    if docker logs users_service 2>&1 | grep -q "Starting development server\\|Starting HTTPS server\\|Quit the server\\|runserver"; then
-                                        echo "Users service logs show it's starting..."
+                                    # Check for successful Django startup
+                                    if docker logs users_service 2>&1 | grep -q "Starting development server\\|Django version\\|Watching for file changes"; then
+                                        echo "Users service Django is starting..."
                                         
-                                        # Try to connect
                                         if curl -k -f --connect-timeout 5 https://localhost:8001/ >/dev/null 2>&1; then
                                             echo "✅ Users service is ready!"
                                             exit 0
                                         fi
                                     fi
                                     
-                                    # Show latest logs for debugging
-                                    if [ $((i % 5)) -eq 0 ]; then
-                                        echo "Latest users service logs:"
-                                        docker logs --tail 3 users_service 2>&1 || echo "No logs yet"
+                                    # Check for database errors
+                                    if docker logs users_service 2>&1 | grep -q "ERROR.*DB\\|Access denied\\|Can't connect"; then
+                                        echo "❌ Users service has database connection errors:"
+                                        docker logs --tail 10 users_service 2>&1 | grep -E "ERROR|CRITICAL|Exception"
+                                        exit 1
                                     fi
                                     
-                                    sleep 10
+                                    sleep 5
                                 done
                                 
-                                echo "❌ Users service timeout after 400 seconds"
-                                echo "Final users service logs:"
-                                docker logs --tail 20 users_service 2>&1
+                                echo "❌ Users service not ready after 100 seconds"
+                                docker logs --tail 30 users_service 2>&1
                                 exit 1
                             '''
                         },
                         'Courses': {
                             sh '''
                                 echo "🔍 Checking courses service..."
-                                for i in $(seq 1 40); do
-                                    echo "⏳ Checking courses service... ($i/40)"
+                                for i in $(seq 1 20); do
+                                    echo "⏳ Checking courses service... ($i/20)"
                                     
-                                    if docker logs courses_service 2>&1 | grep -q "Starting development server\\|Starting HTTPS server\\|Quit the server\\|runserver"; then
-                                        echo "Courses service logs show it's starting..."
+                                    if docker logs courses_service 2>&1 | grep -q "Starting development server\\|Django version\\|Watching for file changes"; then
+                                        echo "Courses service Django is starting..."
                                         
                                         if curl -k -f --connect-timeout 5 https://localhost:8002/ >/dev/null 2>&1; then
                                             echo "✅ Courses service is ready!"
@@ -158,28 +193,28 @@ pipeline {
                                         fi
                                     fi
                                     
-                                    if [ $((i % 5)) -eq 0 ]; then
-                                        echo "Latest courses service logs:"
-                                        docker logs --tail 3 courses_service 2>&1 || echo "No logs yet"
+                                    if docker logs courses_service 2>&1 | grep -q "ERROR.*DB\\|Access denied\\|Can't connect"; then
+                                        echo "❌ Courses service has database connection errors:"
+                                        docker logs --tail 10 courses_service 2>&1 | grep -E "ERROR|CRITICAL|Exception"
+                                        exit 1
                                     fi
                                     
-                                    sleep 10
+                                    sleep 5
                                 done
                                 
-                                echo "❌ Courses service timeout after 400 seconds"
-                                echo "Final courses service logs:"
-                                docker logs --tail 20 courses_service 2>&1
+                                echo "❌ Courses service not ready after 100 seconds"
+                                docker logs --tail 30 courses_service 2>&1
                                 exit 1
                             '''
                         },
                         'Messaging': {
                             sh '''
                                 echo "🔍 Checking messaging service..."
-                                for i in $(seq 1 40); do
-                                    echo "⏳ Checking messaging service... ($i/40)"
+                                for i in $(seq 1 20); do
+                                    echo "⏳ Checking messaging service... ($i/20)"
                                     
-                                    if docker logs messaging_service 2>&1 | grep -q "Starting development server\\|Starting HTTPS server\\|Quit the server\\|runserver"; then
-                                        echo "Messaging service logs show it's starting..."
+                                    if docker logs messaging_service 2>&1 | grep -q "Starting development server\\|Django version\\|Watching for file changes"; then
+                                        echo "Messaging service Django is starting..."
                                         
                                         if curl -k -f --connect-timeout 5 https://localhost:8003/ >/dev/null 2>&1; then
                                             echo "✅ Messaging service is ready!"
@@ -187,28 +222,28 @@ pipeline {
                                         fi
                                     fi
                                     
-                                    if [ $((i % 5)) -eq 0 ]; then
-                                        echo "Latest messaging service logs:"
-                                        docker logs --tail 3 messaging_service 2>&1 || echo "No logs yet"
+                                    if docker logs messaging_service 2>&1 | grep -q "ERROR.*DB\\|Access denied\\|Can't connect"; then
+                                        echo "❌ Messaging service has database connection errors:"
+                                        docker logs --tail 10 messaging_service 2>&1 | grep -E "ERROR|CRITICAL|Exception"
+                                        exit 1
                                     fi
                                     
-                                    sleep 10
+                                    sleep 5
                                 done
                                 
-                                echo "❌ Messaging service timeout after 400 seconds"
-                                echo "Final messaging service logs:"
-                                docker logs --tail 20 messaging_service 2>&1
+                                echo "❌ Messaging service not ready after 100 seconds"
+                                docker logs --tail 30 messaging_service 2>&1
                                 exit 1
                             '''
                         },
                         'Homework': {
                             sh '''
                                 echo "🔍 Checking homework service..."
-                                for i in $(seq 1 40); do
-                                    echo "⏳ Checking homework service... ($i/40)"
+                                for i in $(seq 1 20); do
+                                    echo "⏳ Checking homework service... ($i/20)"
                                     
-                                    if docker logs homework_service 2>&1 | grep -q "Starting development server\\|Starting HTTPS server\\|Quit the server\\|runserver"; then
-                                        echo "Homework service logs show it's starting..."
+                                    if docker logs homework_service 2>&1 | grep -q "Starting development server\\|Django version\\|Watching for file changes"; then
+                                        echo "Homework service Django is starting..."
                                         
                                         if curl -k -f --connect-timeout 5 https://localhost:8004/ >/dev/null 2>&1; then
                                             echo "✅ Homework service is ready!"
@@ -216,17 +251,17 @@ pipeline {
                                         fi
                                     fi
                                     
-                                    if [ $((i % 5)) -eq 0 ]; then
-                                        echo "Latest homework service logs:"
-                                        docker logs --tail 3 homework_service 2>&1 || echo "No logs yet"
+                                    if docker logs homework_service 2>&1 | grep -q "ERROR.*DB\\|Access denied\\|Can't connect"; then
+                                        echo "❌ Homework service has database connection errors:"
+                                        docker logs --tail 10 homework_service 2>&1 | grep -E "ERROR|CRITICAL|Exception"
+                                        exit 1
                                     fi
                                     
-                                    sleep 10
+                                    sleep 5
                                 done
                                 
-                                echo "❌ Homework service timeout after 400 seconds"
-                                echo "Final homework service logs:"
-                                docker logs --tail 20 homework_service 2>&1
+                                echo "❌ Homework service not ready after 100 seconds"
+                                docker logs --tail 30 homework_service 2>&1
                                 exit 1
                             '''
                         }
