@@ -171,8 +171,8 @@ pipeline {
                     
                     echo "⏳ Waiting for MySQL containers (max 120 seconds)..."
                     
-                    # Smart wait - check every 10 seconds instead of waiting full 120
-                    for i in {1..12}; do
+                    # Fixed smart wait loop - proper bash syntax
+                    for i in $(seq 1 12); do
                         echo "Attempt $i/12..."
                         
                         # Test all MySQL connections
@@ -186,6 +186,29 @@ pipeline {
                         
                         if [ $i -eq 12 ]; then
                             echo "❌ MySQL timeout after 120 seconds"
+                            echo "🔍 Checking individual MySQL status..."
+                            
+                            # Check each one individually for better debugging
+                            docker exec mysql_users mysqladmin ping -h localhost -u root -pcrm_password --silent 2>/dev/null || {
+                                echo "❌ Users MySQL not ready"
+                                docker logs mysql_users --tail 10
+                            }
+                            
+                            docker exec mysql_courses mysqladmin ping -h localhost -u root -ppassword --silent 2>/dev/null || {
+                                echo "❌ Courses MySQL not ready"
+                                docker logs mysql_courses --tail 10
+                            }
+                            
+                            docker exec mysql_homework mysqladmin ping -h localhost -u root -ppassword --silent 2>/dev/null || {
+                                echo "❌ Homework MySQL not ready"
+                                docker logs mysql_homework --tail 10
+                            }
+                            
+                            docker exec mysql_messaging mysqladmin ping -h localhost -u root -ppassword --silent 2>/dev/null || {
+                                echo "❌ Messaging MySQL not ready"
+                                docker logs mysql_messaging --tail 10
+                            }
+                            
                             exit 1
                         fi
                         
@@ -194,34 +217,6 @@ pipeline {
                     
                     echo "🔍 Checking MySQL health..."
                     docker ps | grep mysql
-                    
-                    # Verify MySQL readiness with proper connection tests
-                    echo "🧪 Testing MySQL connections..."
-                    
-                    # Test each MySQL instance
-                    docker exec mysql_users mysqladmin ping -h localhost -u root -pcrm_password --silent || {
-                        echo "❌ Users MySQL not ready"
-                        docker logs mysql_users --tail 20
-                        exit 1
-                    }
-                    
-                    docker exec mysql_courses mysqladmin ping -h localhost -u root -ppassword --silent || {
-                        echo "❌ Courses MySQL not ready" 
-                        docker logs mysql_courses --tail 20
-                        exit 1
-                    }
-                    
-                    docker exec mysql_homework mysqladmin ping -h localhost -u root -ppassword --silent || {
-                        echo "❌ Homework MySQL not ready"
-                        docker logs mysql_homework --tail 20
-                        exit 1
-                    }
-                    
-                    docker exec mysql_messaging mysqladmin ping -h localhost -u root -ppassword --silent || {
-                        echo "❌ Messaging MySQL not ready"
-                        docker logs mysql_messaging --tail 20
-                        exit 1
-                    }
                     
                     echo "✅ All MySQL instances are ready!"
                     
