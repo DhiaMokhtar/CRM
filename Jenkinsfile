@@ -143,14 +143,16 @@ pipeline {
         stage('Health Check') {
             steps {
                 script {
-                    sh 'sleep 60'  # Reduced wait time since DB issue is not timeout-related
+                    // Reduced wait time since DB issue is not timeout-related
+                    sh 'sleep 60'
                     sh 'docker ps'
                     
                     parallel (
                         'Users': {
                             sh '''
                                 echo "🔍 Checking users service..."
-                                for i in $(seq 1 20); do  # Reduced iterations
+                                # Reduced iterations
+                                for i in $(seq 1 20); do
                                     echo "⏳ Checking users service... ($i/20)"
                                     
                                     # Check for successful Django startup
