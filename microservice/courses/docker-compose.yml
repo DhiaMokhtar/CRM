@@ -5,7 +5,7 @@ services:
     image: mysql:8.0
     container_name: mysql_courses
     environment:
-      MYSQL_ROOT_PASSWORD: password
+      MYSQL_ROOT_PASSWORD: crm_password
       MYSQL_DATABASE: courses_db
       MYSQL_USER: crm_user
       MYSQL_PASSWORD: crm_password
@@ -16,7 +16,7 @@ services:
     networks:
       - crm_network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-ppassword"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "crm_user", "-pcrm_password"]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -25,6 +25,8 @@ services:
   courses_service:
     build: .
     container_name: courses_service
+    env_file:
+      - .env
     environment:
       - DB_NAME=courses_db
       - DB_USER=crm_user

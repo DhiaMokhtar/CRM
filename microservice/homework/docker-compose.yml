@@ -5,7 +5,7 @@ services:
     image: mysql:8.0
     container_name: mysql_homework
     environment:
-      MYSQL_ROOT_PASSWORD: password
+      MYSQL_ROOT_PASSWORD: crm_password
       MYSQL_DATABASE: homework_db
       MYSQL_USER: crm_user
       MYSQL_PASSWORD: crm_password
@@ -16,7 +16,7 @@ services:
     networks:
       - crm_network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-ppassword"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "crm_user", "-pcrm_password"]
       timeout: 20s
       retries: 10
       interval: 10s
@@ -29,8 +29,8 @@ services:
       - SECRET_KEY=django-insecure-1+e#)73aknts5v9id(oqr#*dg2_pqzk86h-zrq^5^15s_v&&1%
       - DEBUG=True
       - DB_NAME=homework_db
-      - DB_USER=root
-      - DB_PASSWORD=password
+      - DB_USER=crm_user
+      - DB_PASSWORD=crm_password
       - DB_HOST=mysql_homework
       - DB_PORT=3306
     ports:
@@ -50,7 +50,7 @@ services:
     command: >
       sh -c "
         echo 'Waiting for MySQL to be ready...' &&
-        while ! mysqladmin ping -h mysql_homework -u root -ppassword --silent; do
+        while ! mysqladmin ping -h mysql_homework -u crm_user -pcrm_password --silent; do
           echo 'Waiting for MySQL...' && sleep 2
         done &&
         echo 'MySQL is ready!' &&
