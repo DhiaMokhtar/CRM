@@ -4,6 +4,7 @@ services:
   mysql_courses:
     image: mysql:8.0
     container_name: mysql_courses
+    command: --default-authentication-plugin=mysql_native_password
     environment:
       MYSQL_ROOT_PASSWORD: crm_password
       MYSQL_DATABASE: courses_db
@@ -19,8 +20,8 @@ services:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "crm_user", "-pcrm_password"]
       interval: 5s
       timeout: 5s
-      retries: 20
-      start_period: 15s
+      retries: 10
+      start_period: 30s
 
   courses_service:
     build: .

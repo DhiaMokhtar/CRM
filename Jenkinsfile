@@ -106,36 +106,19 @@ pipeline {
         stage('Debug Database Connection') {
             steps {
                 sh '''
-                    echo "🔍 Debugging database connections..."
-                    
-                    # Check MySQL container logs
-                    echo "=== MySQL Logs ==="
-                    for db in mysql_users mysql_courses mysql_messaging mysql_homework; do
-                        echo "--- $db ---"
-                        docker logs --tail 10 $db 2>/dev/null || echo "No logs for $db"
-                    done
-                    
-                    # Test direct MySQL connections
-                    echo "=== Direct MySQL Tests ==="
-                    
-                    # Test users database
-                    echo "Testing users database..."
-                    docker exec mysql_users mysql -u crm_user -pcrm_password -e "SELECT 1" users_db || echo "❌ Users DB connection failed"
-                    
-                    # Test courses database  
-                    echo "Testing courses database..."
-                    docker exec mysql_courses mysql -u crm_user -pcrm_password -e "SELECT 1" courses_db || echo "❌ Courses DB connection failed"
-                    
-                    # Test messaging database
-                    echo "Testing messaging database..."
-                    docker exec mysql_messaging mysql -u crm_user -pcrm_password -e "SELECT 1" messaging_db || echo "❌ Messaging DB connection failed"
-                    
-                    # Test homework database
-                    echo "Testing homework database..."
-                    docker exec mysql_homework mysql -u crm_user -pcrm_password -e "SELECT 1" homework_db || echo "❌ Homework DB connection failed"
-                    
-                    echo "=== Network Connectivity ==="
-                    docker network inspect crm_network
+echo "=== Cross-container DB tests ==="
+for svc in users courses messaging homework; do
+  c="${svc}_service"; db="mysql_${svc}"; schema="${svc}_db"
+  echo "--- From $c -> $db (${schema}) ---"
+  if docker exec $c sh -c "mysqladmin ping -h $db -u crm_user -pcrm_password --silent"; then
+     docker exec $c sh -c "mysql -h $db -u crm_user -pcrm_password -e 'SELECT 1' $schema" || echo "❌ Basic SELECT failed"
+     docker exec $c sh -c "mysql -h $db -u crm_user -pcrm_password -e 'SHOW DATABASES LIKE \"${schema}\";'" || true
+  else
+     echo "❌ mysqladmin ping failed inside $c"
+  fi
+done
+echo '=== Raw MySQL grants (users) ==='
+docker exec mysql_users mysql -u root -pcrm_password -e "SELECT User,Host,plugin FROM mysql.user;"
                 '''
             }
         }

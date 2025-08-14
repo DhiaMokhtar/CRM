@@ -4,6 +4,7 @@ services:
   mysql_homework:
     image: mysql:8.0
     container_name: mysql_homework
+    command: --default-authentication-plugin=mysql_native_password
     environment:
       MYSQL_ROOT_PASSWORD: crm_password
       MYSQL_DATABASE: homework_db
@@ -17,66 +18,41 @@ services:
       - crm_network
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "crm_user", "-pcrm_password"]
-      timeout: 20s
-      retries: 10
       interval: 10s
-      start_period: 40s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
   homework_service:
     build: .
     container_name: homework_service
     environment:
-      - SECRET_KEY=django-insecure-1+e#)73aknts5v9id(oqr#*dg2_pqzk86h-zrq^5^15s_v&&1%
-      - DEBUG=True
       - DB_NAME=homework_db
       - DB_USER=crm_user
       - DB_PASSWORD=crm_password
       - DB_HOST=mysql_homework
       - DB_PORT=3306
-    ports:
-      - "8004:8000"
-    volumes:
-      - ./media:/app/media
-      - ../../localhost.pem:/certs-in/localhost.pem:ro
-      - ../../localhost-key.pem:/certs-in/localhost-key.pem:ro
+      - DEBUG=True
     depends_on:
       mysql_homework:
         condition: service_healthy
+    ports:
+      - "8004:8000"
     networks:
       - crm_network
-    external_links:
-      - users_service:users_service
     restart: unless-stopped
     command: >
       sh -c "
-        echo 'Waiting for MySQL to be ready...' &&
-        while ! mysqladmin ping -h mysql_homework -u crm_user -pcrm_password --silent; do
-          echo 'Waiting for MySQL...' && sleep 2
+        echo '[homework] Waiting for DB...' &&
+        for i in $(seq 1 40); do
+          if mysqladmin ping -h $DB_HOST -u $DB_USER -p$DB_PASSWORD --silent; then
+            echo '[homework] DB up'; break;
+          fi;
+          echo [homework] attempt $i/40; sleep 2;
         done &&
-        echo 'MySQL is ready!' &&
-        if [ ! -f homework/migrations/0001_initial.py ] && ls homework/migrations/0002_* >/dev/null 2>&1; then
-          echo 'Fixing broken migrations chain...' &&
-          find homework/migrations -type f -name '0*.py' ! -name '__init__.py' -delete &&
-          python manage.py makemigrations homework
-        fi &&
-        echo 'Making migrations...' && python manage.py makemigrations &&
-        echo 'Running migrations...' && python manage.py migrate &&
-        echo 'Preparing SSL certs...' &&
-        mkdir -p /app/ssl &&
-        rm -f /app/ssl/localhost.pem /app/ssl/localhost-key.pem &&
-        if [ -f /certs-in/localhost.pem ] && [ -f /certs-in/localhost-key.pem ]; then
-           install -m 600 /certs-in/localhost.pem /app/ssl/localhost.pem &&
-           install -m 600 /certs-in/localhost-key.pem /app/ssl/localhost-key.pem;
-        else
-           echo 'Mounted certs missing -> generating self-signed cert' &&
-           openssl req -x509 -nodes -newkey rsa:2048 -days 365 \
-             -keyout /app/ssl/localhost-key.pem \
-             -out /app/ssl/localhost.pem \
-             -subj '/CN=localhost';
-        fi &&
-        ls -la /app/ssl &&
-        echo 'Starting Django server with HTTPS...' &&
-        python manage.py runsslserver 0.0.0.0:8000 --certificate /app/ssl/localhost.pem --key /app/ssl/localhost-key.pem
+        mysql -h $DB_HOST -u $DB_USER -p$DB_PASSWORD -e 'SELECT 1' $DB_NAME || { echo '[homework] FATAL: cannot run simple query'; exit 1; } &&
+        python manage.py migrate &&
+        python manage.py runserver 0.0.0.0:8000
       "
 
 volumes:
@@ -85,4 +61,3 @@ volumes:
 networks:
   crm_network:
     external: true
-    name: crm_network
