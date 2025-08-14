@@ -37,8 +37,11 @@ pipeline {
         stage('Build Frontend') {
             steps {
                 dir("${FRONTEND_DIR}") {
-                    sh 'npm install --legacy-peer-deps'
-                    sh 'npm run build -- --configuration production'
+                    sh '''
+                        # Use npm ci for faster, deterministic installs
+                        npm ci --legacy-peer-deps --cache .npm-cache
+                        npm run build -- --configuration development
+                    '''
                 }
             }
         }
@@ -55,15 +58,27 @@ pipeline {
         }
 
         stage('Build Microservices') {
-            steps {
-                sh '''
-                  set -e
-                  export DOCKER_BUILDKIT=0
-                  docker-compose -f microservice/users/docker-compose.yml build --no-cache
-                  docker-compose -f microservice/courses/docker-compose.yml build --no-cache
-                  docker-compose -f microservice/messaging/docker-compose.yml build --no-cache
-                  docker-compose -f microservice/homework/docker-compose.yml build --no-cache
-                '''
+            parallel {
+                stage('Build Users') {
+                    steps {
+                        sh 'docker-compose -f microservice/users/docker-compose.yml build'
+                    }
+                }
+                stage('Build Courses') {
+                    steps {
+                        sh 'docker-compose -f microservice/courses/docker-compose.yml build'
+                    }
+                }
+                stage('Build Messaging') {
+                    steps {
+                        sh 'docker-compose -f microservice/messaging/docker-compose.yml build'
+                    }
+                }
+                stage('Build Homework') {
+                    steps {
+                        sh 'docker-compose -f microservice/homework/docker-compose.yml build'
+                    }
+                }
             }
         }
 
@@ -71,18 +86,20 @@ pipeline {
             steps {
                 sh '''
                     set -e
-                    docker-compose -f microservice/users/docker-compose.yml down -v || true
-                    docker-compose -f microservice/courses/docker-compose.yml down -v || true
-                    docker-compose -f microservice/homework/docker-compose.yml down -v || true
-                    docker-compose -f microservice/messaging/docker-compose.yml down -v || true
+                    # Stop services without removing volumes (-v removed)
+                    docker-compose -f microservice/users/docker-compose.yml down || true
+                    docker-compose -f microservice/courses/docker-compose.yml down || true
+                    docker-compose -f microservice/homework/docker-compose.yml down || true
+                    docker-compose -f microservice/messaging/docker-compose.yml down || true
 
-                    docker network rm crm_network 2>/dev/null || true
-                    docker network create crm_network
+                    # Create network only if it doesn't exist
+                    docker network create crm_network 2>/dev/null || echo "Network already exists"
 
-                    docker-compose -f microservice/users/docker-compose.yml up -d --remove-orphans --force-recreate
-                    docker-compose -f microservice/courses/docker-compose.yml up -d --remove-orphans --force-recreate
-                    docker-compose -f microservice/homework/docker-compose.yml up -d --remove-orphans --force-recreate
-                    docker-compose -f microservice/messaging/docker-compose.yml up -d --remove-orphans --force-recreate
+                    # Start services without --force-recreate (reuse containers if possible)
+                    docker-compose -f microservice/users/docker-compose.yml up -d --remove-orphans
+                    docker-compose -f microservice/courses/docker-compose.yml up -d --remove-orphans
+                    docker-compose -f microservice/homework/docker-compose.yml up -d --remove-orphans
+                    docker-compose -f microservice/messaging/docker-compose.yml up -d --remove-orphans
                 '''
             }
         }
@@ -90,13 +107,24 @@ pipeline {
         stage('Health Check') {
             steps {
                 script {
-                    sh 'sleep 30'
+                    sh 'sleep 15'  // Reduced from 30
                     sh 'docker ps'
-                    // Use HTTPS with self-signed (-k)
-                    sh 'curl -k -f https://localhost:8001/ || echo "Users service not ready"'
-                    sh 'curl -k -f https://localhost:8002/ || echo "Courses service not ready"'
-                    sh 'curl -k -f https://localhost:8003/ || echo "Messaging service not ready"'
-                    sh 'curl -k -f https://localhost:8004/ || echo "Homework service not ready"'
+                    
+                    // Parallel health checks
+                    parallel (
+                        'Users': {
+                            sh 'timeout 30 bash -c "until curl -k -f https://localhost:8001/; do sleep 2; done"'
+                        },
+                        'Courses': {
+                            sh 'timeout 30 bash -c "until curl -k -f https://localhost:8002/; do sleep 2; done"'
+                        },
+                        'Messaging': {
+                            sh 'timeout 30 bash -c "until curl -k -f https://localhost:8003/; do sleep 2; done"'
+                        },
+                        'Homework': {
+                            sh 'timeout 30 bash -c "until curl -k -f https://localhost:8004/; do sleep 2; done"'
+                        }
+                    )
                 }
             }
         }
@@ -105,9 +133,14 @@ pipeline {
     post {
         always {
             echo "Pipeline completed."
-            sh 'docker system prune -f'
+            // Only remove dangling images instead of full system prune
+            sh 'docker image prune -f || true'
         }
         success { echo "✅ CRM pipeline succeeded!" }
-        failure { echo "❌ CRM pipeline failed!" }
+        failure { 
+            echo "❌ CRM pipeline failed!"
+            // Only do full cleanup on failure
+            sh 'docker system prune -f || true'
+        }
     }
 }
