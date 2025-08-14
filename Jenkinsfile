@@ -40,10 +40,36 @@ pipeline {
             steps {
                 dir("${FRONTEND_DIR}") {
                     sh '''
-                        # Use npm ci for faster, reproducible builds
-                        npm ci --silent --prefer-offline
-                        # Build with production optimizations
-                        npm run build -- --configuration production
+                        set -e
+                        echo "Node version: $(node --version)"
+                        echo "NPM version: $(npm --version)"
+                        echo "Current directory: $(pwd)"
+                        echo "Directory contents:"
+                        ls -la
+                        
+                        # Check package.json and package-lock.json
+                        if [ -f package.json ]; then
+                            echo "✓ package.json found"
+                        else
+                            echo "✗ package.json missing" && exit 1
+                        fi
+                        
+                        if [ -f package-lock.json ]; then
+                            echo "✓ package-lock.json found"
+                        else
+                            echo "⚠ package-lock.json missing, generating..."
+                            npm install --package-lock-only
+                        fi
+                        
+                        # Clean install
+                        echo "Installing dependencies..."
+                        npm ci --silent
+                        
+                        echo "Building frontend..."
+                        npm run build:prod
+                        
+                        echo "Build output:"
+                        ls -la dist/ || echo "No dist directory found"
                     '''
                 }
             }

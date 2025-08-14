@@ -6,8 +6,10 @@
     "start": "ng serve",
     "build": "ng build",
     "build:prod": "ng build --configuration production --optimization --build-optimizer",
+    "build:fast": "ng build --configuration development",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
+    "test:ci": "ng test --watch=false --browsers=ChromeHeadless",
     "serve:ssr:frond-end": "node dist/frond-end/server/server.mjs"
   },
   "private": true,
