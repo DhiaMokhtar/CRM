@@ -117,15 +117,15 @@ pipeline {
             steps {
                 sh '''
                     set -e
-                    echo "🧹 Cleaning up existing containers..."
+                    echo "🧹 Complete cleanup..."
                     
-                    # Stop and remove all services
-                    docker-compose -f microservice/users/docker-compose.yml down -v || true
-                    docker-compose -f microservice/courses/docker-compose.yml down -v || true
-                    docker-compose -f microservice/homework/docker-compose.yml down -v || true
-                    docker-compose -f microservice/messaging/docker-compose.yml down -v || true
+                    # Stop all services
+                    docker-compose -f microservice/users/docker-compose.yml down --volumes --remove-orphans || true
+                    docker-compose -f microservice/courses/docker-compose.yml down --volumes --remove-orphans || true
+                    docker-compose -f microservice/homework/docker-compose.yml down --volumes --remove-orphans || true
+                    docker-compose -f microservice/messaging/docker-compose.yml down --volumes --remove-orphans || true
                     
-                    # Clean up any orphaned containers
+                    # Clean up containers and volumes
                     docker container prune -f
                     docker volume prune -f
                     
@@ -133,29 +133,69 @@ pipeline {
                     docker network rm crm_network 2>/dev/null || true
                     docker network create crm_network
                     
-                    echo "🚀 Starting MySQL databases first..."
+                    echo "🗄️ Starting MySQL databases with proper initialization..."
                     
-                    # Start MySQL containers first and wait for them to be ready
+                    # Start MySQL containers first
                     docker-compose -f microservice/users/docker-compose.yml up -d mysql_users
                     docker-compose -f microservice/courses/docker-compose.yml up -d mysql_courses  
                     docker-compose -f microservice/homework/docker-compose.yml up -d mysql_homework
                     docker-compose -f microservice/messaging/docker-compose.yml up -d mysql_messaging
                     
-                    echo "⏳ Waiting 60 seconds for MySQL containers to initialize..."
-                    sleep 60
+                    echo "⏳ Waiting for MySQL containers to fully initialize (120 seconds)..."
+                    sleep 120
                     
-                    # Check MySQL health
+                    echo "🔍 Checking MySQL health..."
                     docker ps | grep mysql
+                    
+                    # Verify MySQL readiness with proper connection tests
+                    echo "🧪 Testing MySQL connections..."
+                    
+                    # Test each MySQL instance
+                    docker exec mysql_users mysqladmin ping -h localhost -u root -pcrm_password --silent || {
+                        echo "❌ Users MySQL not ready"
+                        docker logs mysql_users --tail 20
+                        exit 1
+                    }
+                    
+                    docker exec mysql_courses mysqladmin ping -h localhost -u root -ppassword --silent || {
+                        echo "❌ Courses MySQL not ready" 
+                        docker logs mysql_courses --tail 20
+                        exit 1
+                    }
+                    
+                    docker exec mysql_homework mysqladmin ping -h localhost -u root -ppassword --silent || {
+                        echo "❌ Homework MySQL not ready"
+                        docker logs mysql_homework --tail 20
+                        exit 1
+                    }
+                    
+                    docker exec mysql_messaging mysqladmin ping -h localhost -u root -ppassword --silent || {
+                        echo "❌ Messaging MySQL not ready"
+                        docker logs mysql_messaging --tail 20
+                        exit 1
+                    }
+                    
+                    echo "✅ All MySQL instances are ready!"
                     
                     echo "🚀 Starting application services..."
                     
-                    # Start application services
+                    # Start application services with dependency wait
                     docker-compose -f microservice/users/docker-compose.yml up -d users_service
-                    docker-compose -f microservice/courses/docker-compose.yml up -d courses_service
-                    docker-compose -f microservice/homework/docker-compose.yml up -d homework_service  
-                    docker-compose -f microservice/messaging/docker-compose.yml up -d messaging_service
+                    sleep 15
                     
-                    echo "✅ All services started"
+                    docker-compose -f microservice/courses/docker-compose.yml up -d courses_service
+                    sleep 15
+                    
+                    docker-compose -f microservice/homework/docker-compose.yml up -d homework_service
+                    sleep 15
+                    
+                    docker-compose -f microservice/messaging/docker-compose.yml up -d messaging_service
+                    sleep 15
+                    
+                    echo "📊 Final status check..."
+                    docker ps --format "table {{.Names}}\\t{{.Status}}\\t{{.Ports}}"
+                    
+                    echo "✅ All services started successfully!"
                 '''
             }
         }
