@@ -301,27 +301,3 @@ pipeline {
         failure { echo "❌ CRM pipeline failed!" }
     }
 }
-
-{
-  "projects": {
-    "frond-end": {
-      "architect": {
-        "serve": {
-          "builder": "@angular-devkit/build-angular:dev-server",
-          "configurations": {
-            "production": {
-              "buildTarget": "frond-end:build:production"
-            },
-            "development": {
-              "buildTarget": "frond-end:build:development",
-              "ssl": true,
-              "sslKey": "ssl/localhost-key.pem",
-              "sslCert": "ssl/localhost.pem"
-            }
-          },
-          "defaultConfiguration": "development"
-        }
-      }
-    }
-  }
-}
