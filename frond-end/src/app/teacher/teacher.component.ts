@@ -117,12 +117,12 @@ export class TeacherComponent implements OnInit {
   }
 
   loadCoursesForChapter(chapter: any) {
-    this.http.get<any[]>(`http://localhost:8000/api/courses/?chapter=${chapter.id}`)
+    this.http.get<any[]>(`https://localhost:8002/api/courses/?chapter=${chapter.id}`)
       .subscribe({
         next: (courses) => {
           chapter.materials = courses.map((course) => ({
             name: course.title,
-            url: `https://localhost:8000${course.pdf}`  // Change to HTTPS
+            url: `https://localhost:8002${course.pdf}`
           }));
         },
         error: (error) => {
@@ -299,9 +299,18 @@ export class TeacherComponent implements OnInit {
   uploadContent(chapter: Chapter) {
     if (chapter.selectedFile) {
       const formData = new FormData();
-      formData.append('title', chapter.selectedFile.name.replace(/\.[^/.]+$/, ''));
-      formData.append('chapter', chapter.id.toString());
-      formData.append('pdf_file', chapter.selectedFile);   // Correct field name
+      const cleanedTitle = chapter.selectedFile.name.replace(/\s+/g,' ').trim();
+      formData.append('title', cleanedTitle);
+      formData.append('chapter', String(chapter.id));
+      // use backend expected field name
+      formData.append('pdf_file', chapter.selectedFile);
+      console.log('[uploadContent] FormData keys:', Array.from(formData.keys()));
+      console.log('[uploadContent] Chapter ID:', chapter.id);
+      console.log('[uploadContent] File:', {
+        name: chapter.selectedFile.name,
+        size: chapter.selectedFile.size,
+        type: chapter.selectedFile.type
+      });
 
       this.apiService.createCourseMaterial(formData).subscribe({
         next: () => {
@@ -310,11 +319,19 @@ export class TeacherComponent implements OnInit {
           delete chapter.selectedFile;
         },
         error: (error) => {
-          console.error('Error uploading content:', error);
-          console.error('Error details:', error.error);
-          alert(`Failed to upload file: ${error.error?.error || error.message || 'Unknown error'}`);
+          console.error('[uploadContent] Raw error object:', error);
+          if (error?.error) {
+            console.error('[uploadContent] Backend error payload:', error.error);
+            alert('Upload failed: ' + (typeof error.error === 'string'
+              ? error.error
+              : JSON.stringify(error.error)));
+          } else {
+            alert('Upload failed (no error body)');
+          }
         }
       });
+    } else {
+      alert('No file selected');
     }
   }
 
@@ -405,23 +422,37 @@ export class TeacherComponent implements OnInit {
   // Add method to add a new homework
   addHomework() {
     if (this.homeworkForm.valid && this.selectedClass && this.userId) {
+      const rawDue = this.homeworkForm.value.due_date;
+      // Ensure ISO format with seconds for backend robustness
+      const dueIso = rawDue && rawDue.length === 16 ? rawDue + ':00' : rawDue;
+
       const homeworkData = {
-        ...this.homeworkForm.value,
-        classroom_id: this.selectedClass.id,  // Note: use classroom_id for homework microservice
-        teacher_id: this.userId
+        title: this.homeworkForm.value.title.trim(),
+        description: this.homeworkForm.value.description.trim(),
+        due_date: dueIso,
+        classroom_id: this.selectedClass.id,
+        teacher_id: parseInt(this.userId, 10)  // ensure integer
       };
-      
+
+      console.log('[addHomework] Payload:', homeworkData);
+
       this.apiService.createHomework(homeworkData).subscribe({
         next: (response: any) => {
+          console.log('[addHomework] Success:', response);
           this.loadClassHomework(this.selectedClass.id);
           this.homeworkForm.reset();
           this.showAddHomeworkForm = false;
         },
         error: (error) => {
-          console.error('Error adding homework:', error);
-          alert('Failed to add homework. Please try again.');
+          console.error('[addHomework] Error object:', error);
+          const detail = typeof error.error === 'string'
+            ? error.error
+            : JSON.stringify(error.error);
+          alert('Failed to add homework: ' + detail);
         }
       });
+    } else {
+      alert('Form invalid or class not selected');
     }
   }
   

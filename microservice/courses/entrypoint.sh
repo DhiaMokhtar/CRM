@@ -5,14 +5,7 @@ DB_USER="${DB_USER:-root}"
 DB_PASSWORD="${DB_PASSWORD:-password}"
 MAX_TRIES=40
 
-echo "[courses] Waiting for MySQL at $DB_HOST..."
-for i in $(seq 1 $MAX_TRIES); do
-  if mysqladmin ping -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASSWORD" --silent; then
-    echo "[courses] MySQL ready"; break
-  fi
-  echo "[courses] Attempt $i/$MAX_TRIES"; sleep 2
-done
-mysqladmin ping -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASSWORD" --silent || { echo "[courses] DB not reachable"; exit 1; }
+
 
 echo "[courses] Migrations"
 python manage.py makemigrations

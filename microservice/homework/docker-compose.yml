@@ -21,14 +21,13 @@ services:
       retries: 10
       interval: 10s
       start_period: 40s
-    command: --default-authentication-plugin=mysql_native_password
 
   homework_service:
     build: .
     container_name: homework_service
+    env_file:
+      - ../../.env
     environment:
-      - SECRET_KEY=django-insecure-1+e#)73aknts5v9id(oqr#*dg2_pqzk86h-zrq^5^15s_v&&1%
-      - DEBUG=True
       - DB_NAME=homework_db
       - DB_USER=root
       - DB_PASSWORD=password

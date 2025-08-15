@@ -6,42 +6,7 @@ DB_PASSWORD="${DB_PASSWORD:-password}"
 MAX_TRIES=40
 
 echo "[homework] entrypoint version 2025-08-15-01"
-echo "[homework] Waiting for MySQL at $DB_HOST user=$DB_USER..."
 
-# Network diagnostics
-echo "[homework] Network diagnostics:"
-echo "[homework] DNS lookup: $(getent hosts "$DB_HOST" 2>/dev/null || echo 'FAILED')"
-
-for i in $(seq 1 $MAX_TRIES); do
-  # Test network connectivity first
-  if ! (echo > /dev/tcp/"$DB_HOST"/3306) >/dev/null 2>&1; then
-    if (( i % 5 == 0 )); then
-      echo "[homework] Network connectivity failed (attempt $i/$MAX_TRIES)"
-    fi
-    sleep 3
-    continue
-  fi
-  
-  # Test MySQL connection
-  if mysqladmin ping -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASSWORD" --silent 2>/dev/null; then
-    echo "[homework] MySQL ready after $i attempts"
-    break
-  fi
-  
-  if (( i % 5 == 0 )); then
-    echo "[homework] MySQL ping failed (attempt $i/$MAX_TRIES)"
-  fi
-  
-  sleep 3
-done
-
-# Final verification
-if ! mysqladmin ping -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASSWORD" --silent 2>/dev/null; then
-  echo "[homework] FATAL: Cannot connect to MySQL after $MAX_TRIES attempts"
-  echo "[homework] Network test: $((echo > /dev/tcp/"$DB_HOST"/3306) >/dev/null 2>&1 && echo 'OK' || echo 'FAILED')"
-  echo "[homework] DNS test: $(getent hosts "$DB_HOST" 2>/dev/null || echo 'FAILED')"
-  exit 1
-fi
 
 echo "[homework] Database connection verified"
 

@@ -1,76 +1,12 @@
 from rest_framework import viewsets, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.decorators import action
-from django.db.models import Q
 from .models import Lesson, Chapter, Course, Subject, Grade
 from .serializers import LessonSerializer, ChapterSerializer, CourseSerializer, SubjectSerializer, GradeSerializer
-import requests
-import logging
-import os
+import requests, logging, os
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
-
-# Remove ClassRoomViewSet - classrooms are managed by users microservice
-
-class CourseMaterialViewSet(viewsets.ModelViewSet):
-    queryset = Course.objects.all()
-    serializer_class = CourseSerializer
-
-    def get_queryset(self):
-        queryset = Course.objects.all()
-        chapter = self.request.query_params.get('chapter', None)
-        if chapter is not None:
-            queryset = queryset.filter(chapter=chapter)
-        return queryset
-
-    def create(self, request, *args, **kwargs):
-        # Get the uploaded file from pdf_file field
-        uploaded_file = request.FILES.get('pdf_file')
-        if not uploaded_file:
-            return Response({'error': 'pdf_file field is required'}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Get other fields
-        title = request.data.get('title')
-        chapter_id = request.data.get('chapter')
-
-        if not title:
-            return Response({'error': 'title field is required'}, status=status.HTTP_400_BAD_REQUEST)
-        if not chapter_id:
-            return Response({'error': 'chapter field is required'}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Create fileCourses directory if it doesn't exist
-        file_courses_dir = os.path.join(settings.BASE_DIR, 'fileCourses')
-        os.makedirs(file_courses_dir, exist_ok=True)
-
-        # Save the file
-        file_path = os.path.join(file_courses_dir, uploaded_file.name)
-        try:
-            with open(file_path, 'wb+') as destination:
-                for chunk in uploaded_file.chunks():
-                    destination.write(chunk)
-        except Exception as e:
-            return Response({'error': f'Failed to save file: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-        # Create the course record with pdf as a string path
-        course_data = {
-            'title': title,
-            'chapter': chapter_id,
-            'pdf': f'/fileCourses/{uploaded_file.name}'  # String path, not file object
-        }
-
-        serializer = self.get_serializer(data=course_data)
-        if serializer.is_valid():
-            course = serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        else:
-            # Clean up the uploaded file if serializer validation fails
-            try:
-                os.remove(file_path)
-            except:
-                pass
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class LessonViewSet(viewsets.ModelViewSet):
     queryset = Lesson.objects.all()
@@ -141,13 +77,78 @@ class ChapterViewSet(viewsets.ModelViewSet):
 class CourseViewSet(viewsets.ModelViewSet):
     queryset = Course.objects.all()
     serializer_class = CourseSerializer
-    
+
     def get_queryset(self):
         queryset = Course.objects.all()
-        chapter_id = self.request.query_params.get('chapter', None)
-        if chapter_id is not None:
+        chapter_id = self.request.query_params.get('chapter')
+        if chapter_id:
             queryset = queryset.filter(chapter_id=chapter_id)
         return queryset
+
+    def create(self, request, *args, **kwargs):
+        # Accept either pdf_file (uploaded file) or already-built pdf path
+        uploaded_file = request.FILES.get('pdf_file')
+        provided_path = request.data.get('pdf')
+
+        title = request.data.get('title')
+        chapter_id = request.data.get('chapter')
+
+        if not title:
+            return Response({'error': 'title field is required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not chapter_id:
+            return Response({'error': 'chapter field is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not uploaded_file and not provided_path:
+            return Response({'error': 'pdf_file field is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # If client supplied a path already (rare), just validate & save
+        if not uploaded_file and provided_path:
+            data = {
+                'title': title,
+                'chapter': chapter_id,
+                'pdf': provided_path
+            }
+            serializer = self.get_serializer(data=data)
+            if serializer.is_valid():
+                obj = serializer.save()
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        # Handle file upload
+        file_courses_dir = os.path.join(settings.BASE_DIR, 'fileCourses')
+        os.makedirs(file_courses_dir, exist_ok=True)
+
+        file_path = os.path.join(file_courses_dir, uploaded_file.name)
+        try:
+            with open(file_path, 'wb+') as destination:
+                for chunk in uploaded_file.chunks():
+                    destination.write(chunk)
+        except Exception as e:
+            logger.exception("Failed to save uploaded file")
+            return Response({'error': f'Failed to save file: {e}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        relative_path = f'/fileCourses/{uploaded_file.name}'
+        course_data = {
+            'title': title,
+            'chapter': chapter_id,
+            'pdf': relative_path
+        }
+
+        serializer = self.get_serializer(data=course_data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        # Cleanup on validation failure
+        try:
+            os.remove(file_path)
+        except OSError:
+            pass
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+# REMOVE (or comment out) the old CourseMaterialViewSet to prevent router conflicts
+# class CourseMaterialViewSet(...):
+#     pass
 
 # Add grading viewsets
 class SubjectViewSet(viewsets.ModelViewSet):

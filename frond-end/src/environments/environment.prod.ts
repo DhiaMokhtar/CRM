@@ -1,8 +1,5 @@
 export const environment = {
-  production: true,  // Change this to true for production builds
-  apiUrl: 'https://localhost:8000/api',
-  usersServiceUrl: 'https://localhost:8001/api',
-  coursesServiceUrl: 'https://localhost:8002/api',
-  messagingServiceUrl: 'https://localhost:8003/api',
-  homeworkServiceUrl: 'https://localhost:8004/api'
+  production: false,
+  apiUrl: 'http://localhost:8000/api',
+  usersServiceUrl: 'http://localhost:8001/api',
 };

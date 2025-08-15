@@ -172,85 +172,64 @@ class ParentChildrenView(APIView):
             )
 
 class UserSearchView(APIView):
-    """Search users across all user types"""
-    
     def get(self, request):
         query = request.query_params.get('q', '')
         user_type = request.query_params.get('type', None)
         
-        if not query or len(query.strip()) < 2:
+        print(f"[Users UserSearchView] Query: '{query}', Type: '{user_type}'")
+        
+        if len(query) < 2:
             return Response([])
         
-        results = []
-        
-        # Search administrators
-        if not user_type or user_type == 'administrator':
-            admins = Administrator.objects.filter(
-                Q(username__icontains=query) | Q(first_name__icontains=query) | Q(last_name__icontains=query)
-            )[:10]
-            results.extend([{
-                'id': admin.id,
-                'username': admin.username,
-                'first_name': admin.first_name,
-                'last_name': admin.last_name,
-                'name': f"{admin.first_name} {admin.last_name}".strip() or admin.username,
-                'type': 'administrator',
-                'email': admin.email
-            } for admin in admins])
+        users = []
         
         # Search teachers
-        if not user_type or user_type == 'teacher':
-            teachers = Teacher.objects.filter(
-                Q(username__icontains=query) | Q(first_name__icontains=query) | Q(last_name__icontains=query)
-            )[:10]
-            results.extend([{
-                'id': teacher.id,
-                'username': teacher.username,
-                'first_name': teacher.first_name,
-                'last_name': teacher.last_name,
-                'name': f"{teacher.first_name} {teacher.last_name}".strip() or teacher.username,
+        teachers = Teacher.objects.filter(
+            username__icontains=query
+        ).values('id', 'username', 'email')
+        for teacher in teachers:
+            users.append({
+                'id': teacher['id'],
+                'username': teacher['username'],
+                'name': teacher['username'],
                 'type': 'teacher',
-                'email': teacher.email
-            } for teacher in teachers])
+                'email': teacher['email'],
+                'class_name': None
+            })
         
         # Search students
-        if not user_type or user_type == 'student':
-            students = Student.objects.filter(
-                Q(username__icontains=query) | Q(first_name__icontains=query) | Q(last_name__icontains=query)
-            )[:10]
-            results.extend([{
-                'id': student.id,
-                'username': student.username,
-                'first_name': student.first_name,
-                'last_name': student.last_name,
-                'name': f"{student.first_name} {student.last_name}".strip() or student.username,
+        students = Student.objects.filter(
+            username__icontains=query
+        ).select_related('class_id').values(
+            'id', 'username', 'email', 'class_id__name'
+        )
+        for student in students:
+            users.append({
+                'id': student['id'],
+                'username': student['username'],
+                'name': student['username'],
                 'type': 'student',
-                'class_name': student.class_id.name if student.class_id else None,
-                'email': student.email
-            } for student in students])
+                'email': student['email'],
+                'class_name': student['class_id__name']
+            })
         
         # Search parents
-        if not user_type or user_type == 'parent':
-            parents = Parent.objects.filter(
-                Q(username__icontains=query) | Q(first_name__icontains=query) | Q(last_name__icontains=query)
-            )[:10]
-            results.extend([{
-                'id': parent.id,
-                'username': parent.username,
-                'first_name': parent.first_name,
-                'last_name': parent.last_name,
-                'name': f"{parent.first_name} {parent.last_name}".strip() or parent.username,
+        parents = Parent.objects.filter(
+            username__icontains=query
+        ).values('id', 'username', 'email')
+        for parent in parents:
+            users.append({
+                'id': parent['id'],
+                'username': parent['username'],
+                'name': parent['username'],
                 'type': 'parent',
-                'email': parent.email
-            } for parent in parents])
+                'email': parent['email'],
+                'class_name': None
+            })
         
-        return Response(results)
+        print(f"[Users UserSearchView] Found {len(users)} users")
+        return Response(users)
 
 class HealthCheckView(APIView):
-    """Health check endpoint for users microservice"""
-    
     def get(self, request):
-        return Response({
-            'status': 'healthy',
-            'service': 'users'
-        })
+        return Response({'status': 'healthy'}, status=status.HTTP_200_OK)

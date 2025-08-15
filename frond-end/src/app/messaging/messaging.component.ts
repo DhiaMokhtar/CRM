@@ -131,9 +131,20 @@ export class MessagingComponent implements OnInit, OnDestroy {
   }
 
   selectRecipient(user: User): void {
+    console.log('Selecting recipient:', user); // Debug log
     this.selectedRecipient = user;
     this.searchResults = [];
-    this.searchQuery = user.name || user.username; // Use name if available, fallback to username
+    this.searchQuery = user.name || user.username;
+    
+    console.log('Selected recipient set to:', this.selectedRecipient); // Debug log
+    console.log('Show new conversation:', this.showNewConversation); // Debug log
+    
+    // Focus on message input after recipient selection
+    setTimeout(() => {
+      if (this.messageInput) {
+        this.messageInput.nativeElement.focus();
+      }
+    }, 100);
   }
 
   sendMessage(): void {

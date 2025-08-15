@@ -69,15 +69,21 @@
           >
             <div class="user-info">
               <strong>{{ user.name || user.username }}</strong>
-              <span class="user-type">{{ user.type }}</span>
-              <span *ngIf="user.class_name" class="user-class">{{ user.class_name }}</span>
-              <small *ngIf="user.name && user.username !== user.name" class="text-muted">{{ '@' + user.username }}</small>
+              <span class="user-type badge badge-secondary">{{ user.type }}</span>
+              <span *ngIf="user.class_name" class="user-class badge badge-info">{{ user.class_name }}</span>
+              <small *ngIf="user.name && user.username !== user.name" class="text-muted d-block">{{ '@' + user.username }}</small>
             </div>
           </div>
         </div>
         
-        <div *ngIf="selectedRecipient" class="selected-recipient">
-          <strong>To: {{ selectedRecipient.name || selectedRecipient.username }}</strong> ({{ selectedRecipient.type }})
+        <div *ngIf="searchQuery.length > 2 && searchResults.length === 0" class="no-results">
+          <small class="text-muted">No users found</small>
+        </div>
+        
+        <div *ngIf="selectedRecipient" class="selected-recipient alert alert-info">
+          <strong>To: {{ selectedRecipient.name || selectedRecipient.username }}</strong> 
+          <span class="badge badge-secondary ml-2">{{ selectedRecipient.type }}</span>
+          <div><small>Start typing your message below...</small></div>
         </div>
       </div>
     </div>

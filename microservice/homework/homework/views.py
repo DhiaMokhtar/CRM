@@ -82,6 +82,16 @@ class HomeworkViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(homework, many=True)
         return Response(serializer.data)
 
+    def create(self, request, *args, **kwargs):
+        logger.debug("[HomeworkViewSet.create] DATA=%s", dict(request.data))
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            obj = serializer.save()
+            logger.debug("[HomeworkViewSet.create] Created id=%s", obj.id)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        logger.warning("[HomeworkViewSet.create] Errors=%s", serializer.errors)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
 class HomeworkSubmissionViewSet(viewsets.ModelViewSet):
     queryset = HomeworkSubmission.objects.all()
     serializer_class = HomeworkSubmissionSerializer

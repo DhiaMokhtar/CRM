@@ -219,8 +219,8 @@ export class ApiService {
     if (type) {
       params += `&type=${type}`;
     }
-    // Use the correct endpoint for messaging microservice
-    return this.http.get<User[]>(`${this.messagingServiceUrl}/search/users/?${params}`, { withCredentials: true });
+    // Search users directly from users microservice
+    return this.http.get<User[]>(`${this.usersServiceUrl}/search/users/?${params}`, { withCredentials: true });
   }
 
   // User management methods (use users microservice)
