@@ -3,7 +3,9 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from .models import Lesson, Chapter, Course, Subject, Grade
 from .serializers import LessonSerializer, ChapterSerializer, CourseSerializer, SubjectSerializer, GradeSerializer
-import requests, logging, os
+import os
+import logging
+import requests
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
@@ -277,3 +279,80 @@ class HealthCheckView(APIView):
             'status': 'healthy',
             'service': 'courses'
         })
+
+class StudentCoursesView(APIView):
+    """Get courses for a specific student"""
+
+    def get(self, request, student_id):
+        try:
+            logger.info(f"[StudentCoursesView] student_id={student_id}")
+            classroom_id = self._get_student_classroom(student_id)
+            logger.info(f"[StudentCoursesView] resolved classroom_id={classroom_id}")
+
+            if classroom_id is None:
+                return Response({'error': 'Student classroom not found'}, status=status.HTTP_404_NOT_FOUND)
+
+            lessons = Lesson.objects.filter(classroom_id=classroom_id)
+            logger.info(f"[StudentCoursesView] lessons count={lessons.count()}")
+
+            lesson_data = []
+            for lesson in lessons:
+                chapters = Chapter.objects.filter(lesson=lesson)
+                chapters_data = []
+                for chapter in chapters:
+                    courses = Course.objects.filter(chapter=chapter)
+                    courses_data = [{
+                        'id': c.id,
+                        'title': c.title,
+                        'pdf': c.pdf
+                    } for c in courses]
+                    chapters_data.append({
+                        'id': chapter.id,
+                        'title': chapter.title,
+                        'courses': courses_data
+                    })
+                lesson_data.append({
+                    'id': lesson.id,
+                    'title': lesson.title,
+                    'chapters': chapters_data
+                })
+
+            return Response(lesson_data, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.exception(f"[StudentCoursesView] Unexpected error: {e}")
+            return Response({'error': 'Internal server error'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def _get_student_classroom(self, student_id: int):
+        """
+        Fetch student from users microservice and return classroom id.
+        IMPORTANT: Do NOT use localhost inside a container to reach another container.
+        """
+        base_url = os.getenv('USERS_SERVICE_BASE_URL', 'https://users_service:8000')
+        # Ensure no trailing slash
+        base_url = base_url.rstrip('/')
+
+        urls = [
+            f"{base_url}/api/students/{student_id}/",
+        ]
+
+        for url in urls:
+            try:
+                logger.info(f"[_get_student_classroom] GET {url}")
+                resp = requests.get(url, timeout=5, verify=False)
+                logger.info(f"[_get_student_classroom] status={resp.status_code}")
+                if resp.status_code == 200:
+                    data = resp.json()
+                    logger.info(f"[_get_student_classroom] payload keys={list(data.keys())}")
+                    classroom_id = data.get('class_id')
+                    logger.info(f"[_get_student_classroom] class_id raw={classroom_id}")
+                    if classroom_id is not None:
+                        try:
+                            return int(classroom_id)
+                        except (TypeError, ValueError):
+                            logger.warning(f"[_get_student_classroom] cannot cast class_id={classroom_id}")
+                    return None
+            except requests.RequestException as e:
+                logger.warning(f"[_get_student_classroom] request failed {url}: {e}")
+                continue
+        logger.warning(f"[_get_student_classroom] all attempts failed for student {student_id}")
+        return None

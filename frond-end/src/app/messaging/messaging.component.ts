@@ -89,17 +89,30 @@ export class MessagingComponent implements OnInit, OnDestroy {
   }
 
   selectConversation(conversation: Conversation): void {
+    console.log('Selecting conversation:', conversation);
     this.messagingService.selectConversation(conversation);
     this.showNewConversation = false;
+    this.selectedRecipient = null; // Clear any selected recipient
+    this.searchQuery = '';
+    this.searchResults = [];
+    this.messageContent = ''; // Clear message content
   }
 
   startNewConversation(): void {
+    console.log('Starting new conversation...');
     this.showNewConversation = true;
-    this.selectedConversation = null;
+    this.selectedConversation = null; // Clear any existing conversation
     this.messages = [];
     this.searchQuery = '';
     this.searchResults = [];
     this.selectedRecipient = null;
+    this.messageContent = ''; // Clear any existing message content
+    
+    console.log('New conversation state:', {
+      showNewConversation: this.showNewConversation,
+      selectedConversation: this.selectedConversation,
+      selectedRecipient: this.selectedRecipient
+    });
   }
 
   searchUsers(): void {
@@ -131,13 +144,18 @@ export class MessagingComponent implements OnInit, OnDestroy {
   }
 
   selectRecipient(user: User): void {
-    console.log('Selecting recipient:', user); // Debug log
+    console.log('Selecting recipient:', user);
     this.selectedRecipient = user;
+    this.selectedConversation = null; // Clear any existing conversation
+    this.messages = []; // Clear messages from previous conversation
     this.searchResults = [];
     this.searchQuery = user.name || user.username;
     
-    console.log('Selected recipient set to:', this.selectedRecipient); // Debug log
-    console.log('Show new conversation:', this.showNewConversation); // Debug log
+    console.log('Recipient selection state:', {
+      selectedRecipient: this.selectedRecipient,
+      selectedConversation: this.selectedConversation,
+      showNewConversation: this.showNewConversation
+    });
     
     // Focus on message input after recipient selection
     setTimeout(() => {
@@ -152,39 +170,49 @@ export class MessagingComponent implements OnInit, OnDestroy {
       return;
     }
 
-    if (this.selectedConversation) {
-      // Sending to existing conversation
-      this.messagingService.sendMessage(
-        this.selectedConversation.id,
-        this.messageContent.trim()
-      ).subscribe({
-        next: (response) => {
-          console.log('Message sent successfully:', response);
-          this.messageContent = '';
-          this.messagingService.loadConversationMessages(this.selectedConversation!.id); // Changed from loadMessages
-        },
-        error: (error) => {
-          console.error('Error sending message:', error);
-        }
-      });
-    } else if (this.selectedRecipient) {
-      // Starting new conversation
+    console.log('Sending message...');
+    console.log('Selected conversation:', this.selectedConversation);
+    console.log('Selected recipient:', this.selectedRecipient);
+    console.log('Show new conversation:', this.showNewConversation);
+
+    if (this.showNewConversation && this.selectedRecipient) {
+      // Starting new conversation - this should take priority
+      console.log('Starting new conversation with:', this.selectedRecipient);
       this.messagingService.createMessage(
         this.selectedRecipient.type,
         this.selectedRecipient.id,
         this.messageContent.trim()
       ).subscribe({
         next: (response) => {
-          console.log('Message sent successfully:', response);
+          console.log('New conversation message sent successfully:', response);
           this.messageContent = '';
           this.selectedRecipient = null;
           this.showNewConversation = false;
+          this.selectedConversation = null; // Clear any existing conversation
           this.loadConversations(); // Refresh conversations
         },
         error: (error) => {
-          console.error('Error sending message:', error);
+          console.error('Error sending new conversation message:', error);
         }
       });
+    } else if (this.selectedConversation && !this.showNewConversation) {
+      // Sending to existing conversation
+      console.log('Sending to existing conversation:', this.selectedConversation.id);
+      this.messagingService.sendMessage(
+        this.selectedConversation.id,
+        this.messageContent.trim()
+      ).subscribe({
+        next: (response) => {
+          console.log('Existing conversation message sent successfully:', response);
+          this.messageContent = '';
+          this.messagingService.loadConversationMessages(this.selectedConversation!.id);
+        },
+        error: (error) => {
+          console.error('Error sending existing conversation message:', error);
+        }
+      });
+    } else {
+      console.error('No recipient or conversation selected');
     }
   }
 
@@ -263,5 +291,14 @@ export class MessagingComponent implements OnInit, OnDestroy {
     } else {
       this.router.navigate(['/auth']);
     }
+  }
+
+  debugState(): void {
+    console.log('=== Debug State ===');
+    console.log('showNewConversation:', this.showNewConversation);
+    console.log('selectedConversation:', this.selectedConversation);
+    console.log('selectedRecipient:', this.selectedRecipient);
+    console.log('messageContent:', this.messageContent);
+    console.log('===================');
   }
 }
