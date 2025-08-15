@@ -272,22 +272,23 @@ pipeline {
 
         stage('Health Check') {
             steps {
-                script {
-                    sh '''
-                        echo "🔍 Performing health checks..."
-                        sleep 30
-                        docker ps
-                        
-                        # Check frontend on port 8005
-                        curl -f http://localhost:8005/ || echo "Frontend not ready"
-                        
-                        # Check microservices
-                        curl -k -f https://localhost:8001/ || echo "Users service not ready"
-                        curl -k -f https://localhost:8002/ || echo "Courses service not ready"
-                        curl -k -f https://localhost:8003/ || echo "Messaging service not ready"
-                        curl -k -f https://localhost:8004/ || echo "Homework service not ready"
-                    '''
-                }
+                sh '''
+                  echo "🔍 Performing health checks..."
+                  sleep 20
+                  set +e
+                  FAIL=0
+                  for S in 8001 8002 8003 8004; do
+                    CODE=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:$S/ || echo 000)
+                    if [ "$CODE" -ge 200 ] && [ "$CODE" -lt 500 ]; then
+                      echo "Service $S OK (HTTP $CODE)"
+                    else
+                      echo "Service $S NOT READY (HTTP $CODE)"
+                      FAIL=1
+                    fi
+                  done
+                  curl -k -sf https://localhost:8443/ >/dev/null && echo "Frontend OK" || { echo "Frontend NOT READY"; FAIL=1; }
+                  exit $FAIL
+                '''
             }
         }
     }
