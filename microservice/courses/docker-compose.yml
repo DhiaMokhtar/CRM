@@ -44,6 +44,18 @@ services:
       - crm_network
     restart: unless-stopped
 
+  users_service:
+    ports:
+      - "8001:8000"  # External:Internal
+
+  homework_service:
+    ports:
+      - "8003:8000"
+
+  messaging_service:
+    ports:
+      - "8004:8000"
+
 volumes:
   mysql_courses_data:
 

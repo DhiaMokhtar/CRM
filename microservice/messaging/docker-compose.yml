@@ -38,7 +38,7 @@ services:
       mysql_messaging:
         condition: service_healthy
     ports:
-      - "8003:8000"
+      - "8004:8000"
     volumes:
       - ./media:/app/media
       - ../../certs:/certs-in:ro

@@ -212,18 +212,32 @@ pipeline {
                     
                     echo "🚀 Starting application services..."
                     
-                    # Start application services with dependency wait
+                    # Start services with proper wait and health check
+                    echo "Starting users service..."
                     docker-compose -f microservice/users/docker-compose.yml up -d users_service
-                    sleep 15
+                    sleep 20
                     
+                    # Wait for users service to be healthy
+                    for i in $(seq 1 6); do
+                        if curl -sf http://localhost:8001/health/ >/dev/null 2>&1 || curl -sf http://localhost:8001/ >/dev/null 2>&1; then
+                            echo "✅ Users service ready"
+                            break
+                        fi
+                        echo "Waiting for users service... ($i/6)"
+                        sleep 10
+                    done
+                    
+                    echo "Starting courses service..."
                     docker-compose -f microservice/courses/docker-compose.yml up -d courses_service
-                    sleep 15
+                    sleep 20
                     
+                    echo "Starting homework service..."
                     docker-compose -f microservice/homework/docker-compose.yml up -d homework_service
-                    sleep 15
+                    sleep 20
                     
+                    echo "Starting messaging service..."
                     docker-compose -f microservice/messaging/docker-compose.yml up -d messaging_service
-                    sleep 15
+                    sleep 20
                     
                     echo "📊 Final status check..."
                     docker ps --format "table {{.Names}}\\t{{.Status}}\\t{{.Ports}}"
@@ -264,20 +278,71 @@ pipeline {
             steps {
                 sh '''
                   echo "🔍 Performing health checks..."
-                  sleep 20
+                  sleep 30
                   set +e
                   FAIL=0
-                  for S in 8001 8002 8003 8004; do
-                    CODE=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:$S/ || echo 000)
-                    if [ "$CODE" -ge 200 ] && [ "$CODE" -lt 500 ]; then
-                      echo "Service $S OK (HTTP $CODE)"
-                    else
-                      echo "Service $S NOT READY (HTTP $CODE)"
+                  
+                  # Check service status first
+                  echo "📊 Container status:"
+                  docker ps --format "table {{.Names}}\\t{{.Status}}\\t{{.Ports}}"
+                  
+                  # Check if services are actually running
+                  for SERVICE in users_service courses_service homework_service messaging_service; do
+                    if ! docker ps --format "{{.Names}}" | grep -q "$SERVICE"; then
+                      echo "❌ $SERVICE is not running"
                       FAIL=1
                     fi
                   done
-                  curl -k -sf https://localhost:8443/ >/dev/null && echo "Frontend OK" || { echo "Frontend NOT READY"; FAIL=1; }
+                  
+                  # Test external ports
+                  for S in 8001 8002 8003 8004; do
+                    echo "Testing port $S..."
+                    CODE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 http://localhost:$S/ || echo 000)
+                    if [ "$CODE" -ge 200 ] && [ "$CODE" -lt 500 ]; then
+                      echo "✅ Service $S OK (HTTP $CODE)"
+                    else
+                      echo "❌ Service $S NOT READY (HTTP $CODE)"
+                      # Show container logs for debugging
+                      case $S in
+                        8001) docker logs users_service --tail 20 || true ;;
+                        8002) docker logs courses_service --tail 20 || true ;;
+                        8003) docker logs homework_service --tail 20 || true ;;
+                        8004) docker logs messaging_service --tail 20 || true ;;
+                      esac
+                      FAIL=1
+                    fi
+                  done
+                  
+                  # Test frontend
+                  curl -k -sf https://localhost:8443/ >/dev/null && echo "✅ Frontend OK" || { 
+                    echo "❌ Frontend NOT READY"
+                    docker logs crm-frontend --tail 20 || true
+                    FAIL=1
+                  }
+                  
+                  if [ $FAIL -eq 1 ]; then
+                    echo "❌ Health check failed - showing all container logs:"
+                    docker ps -a
+                  fi
+                  
                   exit $FAIL
+                '''
+            }
+        }
+
+        stage('Debug Services') {
+            steps {
+                sh '''
+                    echo "🔍 Debug information:"
+                    echo "Active containers:"
+                    docker ps -a
+                    echo ""
+                    echo "Network information:"
+                    docker network ls
+                    docker network inspect crm_network || true
+                    echo ""
+                    echo "Port listening check:"
+                    netstat -tulpn | grep LISTEN | grep -E ':(8001|8002|8003|8004|8443)' || echo "No services listening on expected ports"
                 '''
             }
         }

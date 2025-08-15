@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "$(date +'%F %T') | [users] entrypoint version 2025-08-12-05"
+echo "$(date +'%F %T') | [users] entrypoint version 2025-08-12-06"
 
 DB_HOST="${DB_HOST:-mysql_users}"
 DB_USER="${DB_USER:-crm_user}"
@@ -11,10 +11,9 @@ ROOT_PW="${ROOT_PASSWORD:-crm_password}"
 MAX_TRIES="${MAX_TRIES:-60}"
 RUN_MIGRATIONS="${RUN_MIGRATIONS:-true}"
 
-# Avoid showing password in command args (mysql / mysqladmin honor MYSQL_PWD)
+# Set MySQL password environment
 export MYSQL_PWD="$DB_PASSWORD"
 
-MYSQL_SSL_MODE="${MYSQL_SSL_MODE:-DISABLED}"
 SSL_ARGS="--ssl-mode=DISABLED"
 echo "[users] Using SSL args: $SSL_ARGS"
 
@@ -56,7 +55,7 @@ MYSQL_PWD="$ROOT_PW" mysql $SSL_ARGS -h "$DB_HOST" -u root -e \
 if [[ "$RUN_MIGRATIONS" == "true" ]]; then
   echo "[users] Running migrations..."
   python manage.py migrate --noinput
-  python manage.py collectstatic --noinput || true
+  python manage.py collectstatic --noinput --clear || true
 fi
 
 echo "[users] SSL certificate setup..."
@@ -70,14 +69,24 @@ else
   openssl req -x509 -nodes -newkey rsa:2048 -days 7 \
     -keyout /app/ssl/localhost-key.pem \
     -out /app/ssl/localhost.pem \
-    -subj '/CN=localhost' || echo "[users] SSL generation failed"
-  chmod 600 /app/ssl/localhost*.pem
+    -subj '/CN=localhost' 2>/dev/null || echo "[users] SSL generation failed"
+  chmod 600 /app/ssl/localhost*.pem 2>/dev/null || true
 fi
 
 echo "[users] Starting Django server..."
-# Provide default command if none specified
-if [ $# -eq 0 ]; then
-  exec python manage.py runsslserver 0.0.0.0:8000 --certificate /app/ssl/localhost.pem --key /app/ssl/localhost-key.pem
+# Check if django-sslserver is available
+if python -c "import sslserver" 2>/dev/null; then
+  echo "[users] Using SSL server"
+  if [ $# -eq 0 ]; then
+    exec python manage.py runsslserver 0.0.0.0:8000 --certificate /app/ssl/localhost.pem --key /app/ssl/localhost-key.pem
+  else
+    exec "$@"
+  fi
 else
-  exec "$@"
+  echo "[users] Using development server"
+  if [ $# -eq 0 ]; then
+    exec python manage.py runserver 0.0.0.0:8000
+  else
+    exec "$@"
+  fi
 fi

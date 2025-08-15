@@ -45,6 +45,30 @@ services:
       - crm_network
     restart: unless-stopped
 
+  courses_service:
+    image: your_courses_service_image
+    container_name: courses_service
+    ports:
+      - "8002:8000"
+    networks:
+      - crm_network
+
+  homework_service:
+    image: your_homework_service_image
+    container_name: homework_service
+    ports:
+      - "8003:8000"
+    networks:
+      - crm_network
+
+  messaging_service:
+    image: your_messaging_service_image
+    container_name: messaging_service
+    ports:
+      - "8004:8000"
+    networks:
+      - crm_network
+
 volumes:
   mysql_users_data:
 

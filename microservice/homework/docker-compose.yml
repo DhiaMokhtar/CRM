@@ -35,7 +35,7 @@ services:
       - DB_HOST=mysql_homework
       - DB_PORT=3306
     ports:
-      - "8004:8000"
+      - "8003:8000"
     volumes:
       - ./media:/app/media
       - ../../certs:/certs-in:ro
@@ -45,6 +45,24 @@ services:
     networks:
       - crm_network
     restart: unless-stopped
+
+  users_service:
+    ports:
+      - "8001:8000"  # External:Internal
+    networks:
+      - crm_network
+
+  courses_service:
+    ports:
+      - "8002:8000"
+    networks:
+      - crm_network
+
+  messaging_service:
+    ports:
+      - "8004:8000"
+    networks:
+      - crm_network
 
 volumes:
   mysql_homework_data:
