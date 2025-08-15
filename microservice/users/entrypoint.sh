@@ -9,24 +9,40 @@ DB_NAME="${DB_NAME:-users_db}"
 ROOT_PW="${ROOT_PASSWORD:-crm_password}"
 MAX_TRIES=60
 
+echo "[users] Network check:"
+getent hosts "$DB_HOST" || echo "[users] DNS lookup FAILED for $DB_HOST"
+
 echo "$(date +'%F %T') | [users] Waiting for MySQL at $DB_HOST user=$DB_USER db=$DB_NAME"
 for i in $(seq 1 $MAX_TRIES); do
-  if mysqladmin ping -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASSWORD" --silent 2>/dev/null; then
-    echo "[users] MySQL ready after $i attempt(s)"
+  if mysqladmin ping --protocol=TCP -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASSWORD" --silent 2>/dev/null; then
+    echo "[users] MySQL ready after $i attempt(s) (as $DB_USER)"
     break
   fi
-  if (( i % 10 == 0 )); then
-    echo "[users] Still waiting ($i/$MAX_TRIES)"
+
+  # Every 5 attempts show detailed diagnostics
+  if (( i % 5 == 0 )); then
+    echo "[users] Attempt $i/$MAX_TRIES still failing – detailed diagnostics:"
+    echo "  DNS: $(getent hosts "$DB_HOST" | awk '{print $1}' | xargs echo || echo 'N/A')"
+    echo "  Port 3306 reachable: $((echo > /dev/tcp/"$DB_HOST"/3306) >/dev/null 2>&1 && echo YES || echo NO)"
+    echo "  mysqladmin (user=$DB_USER) output:"
+    mysqladmin ping --protocol=TCP -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASSWORD" 2>&1 || true
+    echo "  Trying root fallback:"
+    mysqladmin ping --protocol=TCP -h "$DB_HOST" -u root -p"$ROOT_PW" 2>&1 || true
+  fi
+
+  if (( i == MAX_TRIES )); then
+    echo "[users] FATAL: Could not reach MySQL with provided credentials"
+    exit 1
   fi
   sleep 2
 done
 
-if ! mysqladmin ping -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASSWORD" --silent 2>/dev/null; then
-  echo "[users] Trying root fallback"
-  if ! mysqladmin ping -h "$DB_HOST" -u root -p"$ROOT_PW" --silent 2>/dev/null; then
-    echo "[users] ERROR: DB not reachable"; exit 1
-  fi
-fi
+# Secondary verification (will show error if auth problem)
+echo "[users] Verifying simple query..."
+mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASSWORD" -e "SELECT 1;" || {
+  echo "[users] ERROR: Simple query failed"
+  exit 1
+}
 
 echo "[users] Ensuring database $DB_NAME exists"
 mysql -h "$DB_HOST" -u root -p"$ROOT_PW" -e "CREATE DATABASE IF NOT EXISTS \`$DB_NAME\`; GRANT ALL ON \`$DB_NAME\`.* TO '$DB_USER'@'%' IDENTIFIED BY '$DB_PASSWORD'; FLUSH PRIVILEGES;" || echo "[users] DB init step skipped"
@@ -34,43 +50,4 @@ mysql -h "$DB_HOST" -u root -p"$ROOT_PW" -e "CREATE DATABASE IF NOT EXISTS \`$DB
 echo "[users] Running migrations"
 python manage.py makemigrations
 python manage.py migrate
-
-echo "[users] Creating default admin user"
-python manage.py shell -c "
-from users.models import Administrator
-if not Administrator.objects.filter(username='root').exists():
-    Administrator.objects.create(username='root', password='root', email='root@admin.com')
-    print('Created admin user: root/root')
-else:
-    print('Admin user root already exists')
-"
-
-echo "[users] Creating default classroom"
-python manage.py shell -c "
-from users.models import ClassRoom
-if not ClassRoom.objects.filter(name='physics class').exists():
-    ClassRoom.objects.create(name='physics class')
-    print('Created default classroom: physics class')
-else:
-    print('Classroom physics class already exists')
-"
-
-echo "[users] Collect static (if any)"
-python manage.py collectstatic --noinput || true
-
-echo "[users] SSL setup"
-mkdir -p /app/ssl
-rm -f /app/ssl/localhost.pem /app/ssl/localhost-key.pem
-if [[ -f /certs-in/localhost.pem && -f /certs-in/localhost-key.pem ]]; then
-  install -m 600 /certs-in/localhost.pem /app/ssl/localhost.pem
-  install -m 600 /certs-in/localhost-key.pem /app/ssl/localhost-key.pem
-else
-  echo "[users] Generating self-signed cert"
-  openssl req -x509 -nodes -newkey rsa:2048 -days 365 \
-    -keyout /app/ssl/localhost-key.pem \
-    -out /app/ssl/localhost.pem \
-    -subj "/CN=localhost"
-fi
-
-echo "[users] Starting HTTPS server"
-exec python manage.py runsslserver 0.0.0.0:8000 --certificate /app/ssl/localhost.pem --key /app/ssl/localhost-key.pem
+# ...existing code...

@@ -180,36 +180,29 @@ pipeline {
                            docker exec mysql_courses mysqladmin ping -h localhost -u root -ppassword --silent 2>/dev/null && \
                            docker exec mysql_homework mysqladmin ping -h localhost -u root -ppassword --silent 2>/dev/null && \
                            docker exec mysql_messaging mysqladmin ping -h localhost -u root -ppassword --silent 2>/dev/null; then
-                            echo "✅ All MySQL instances ready in $((i*10)) seconds!"
-                            break
-                        fi
-                        
-                        if [ $i -eq 12 ]; then
-                            echo "❌ MySQL timeout after 120 seconds"
-                            echo "🔍 Checking individual MySQL status..."
-                            
-                            # Check each one individually for better debugging
-                            docker exec mysql_users mysqladmin ping -h localhost -u root -pcrm_password --silent 2>/dev/null || {
-                                echo "❌ Users MySQL not ready"
-                                docker logs mysql_users --tail 10
-                            }
-                            
-                            docker exec mysql_courses mysqladmin ping -h localhost -u root -ppassword --silent 2>/dev/null || {
-                                echo "❌ Courses MySQL not ready"
-                                docker logs mysql_courses --tail 10
-                            }
-                            
-                            docker exec mysql_homework mysqladmin ping -h localhost -u root -ppassword --silent 2>/dev/null || {
-                                echo "❌ Homework MySQL not ready"
-                                docker logs mysql_homework --tail 10
-                            }
-                            
-                            docker exec mysql_messaging mysqladmin ping -h localhost -u root -ppassword --silent 2>/dev/null || {
-                                echo "❌ Messaging MySQL not ready"
-                                docker logs mysql_messaging --tail 10
-                            }
-                            
-                            exit 1
+                           echo "✅ All MySQL instances ready in $((i*10)) seconds!"
+                           break
+                        else
+                           if [ $i -eq 12 ]; then
+                             echo "❌ MySQL timeout – showing verbose status"
+                             docker exec mysql_users mysqladmin ping -h localhost -u root -pcrm_password 2>&1 || true
+                             docker exec mysql_users ps -o pid,cmd -p 1 || true
+                             docker logs mysql_users --tail 10
+                             
+                             docker exec mysql_courses mysqladmin ping -h localhost -u root -ppassword 2>&1 || true
+                             docker exec mysql_courses ps -o pid,cmd -p 1 || true
+                             docker logs mysql_courses --tail 10
+                             
+                             docker exec mysql_homework mysqladmin ping -h localhost -u root -ppassword 2>&1 || true
+                             docker exec mysql_homework ps -o pid,cmd -p 1 || true
+                             docker logs mysql_homework --tail 10
+                             
+                             docker exec mysql_messaging mysqladmin ping -h localhost -u root -ppassword 2>&1 || true
+                             docker exec mysql_messaging ps -o pid,cmd -p 1 || true
+                             docker logs mysql_messaging --tail 10
+                             
+                             exit 1
+                           fi
                         fi
                         
                         sleep 10
