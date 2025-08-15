@@ -42,34 +42,31 @@ pipeline {
                     sh '''
                         set -e
                         echo "Node version: $(node --version)"
-                        echo "NPM version: $(npm --version)"
-                        echo "Current directory: $(pwd)"
-                        echo "Directory contents:"
-                        ls -la
-                        
-                        # Check package.json and package-lock.json
-                        if [ -f package.json ]; then
-                            echo "✓ package.json found"
-                        else
-                            echo "✗ package.json missing" && exit 1
+                        echo "NPM version:  $(npm --version)"
+
+                        if [ ! -f package.json ]; then
+                          echo "✗ package.json missing" >&2; exit 1
                         fi
-                        
-                        if [ -f package-lock.json ]; then
-                            echo "✓ package-lock.json found"
-                        else
-                            echo "⚠ package-lock.json missing, generating..."
-                            npm install --package-lock-only
+                        if [ ! -f package-lock.json ]; then
+                          echo "⚠ package-lock.json missing; generating (one-time)..."
+                          npm install --package-lock-only
                         fi
-                        
-                        # Clean install
-                        echo "Installing dependencies..."
-                        npm ci --silent
-                        
-                        echo "Building frontend..."
+
+                        # Basic sanity: lock file must list at least angular/core
+                        if ! grep -q '"@angular/core"' package-lock.json; then
+                          echo "⚠ package-lock.json appears incomplete; regenerating..."
+                          rm package-lock.json
+                          npm install --package-lock-only
+                        fi
+
+                        echo "Installing dependencies with npm ci..."
+                        npm ci --no-audit --no-fund
+
+                        echo "Building frontend (production)..."
                         npm run build:prod
-                        
-                        echo "Build output:"
-                        ls -la dist/ || echo "No dist directory found"
+
+                        echo "Listing dist:"
+                        ls -la dist || { echo "✗ dist missing" >&2; exit 1; }
                     '''
                 }
             }
