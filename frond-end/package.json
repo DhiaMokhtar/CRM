@@ -3,14 +3,27 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
-    "start": "ng serve",
+    "start": "ng serve --ssl --ssl-key ssl/localhost-key.pem --ssl-cert ssl/localhost.pem",
+    "start:host": "ng serve --host 0.0.0.0 --port 4200 --ssl --ssl-key ssl/localhost-key.pem --ssl-cert ssl/localhost.pem",
     "build": "ng build",
     "build:prod": "ng build --configuration production",
-    "build:fast": "ng build --configuration development",
+    "build:dev": "ng build --configuration development",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "test:ci": "ng test --watch=false --browsers=ChromeHeadless",
-    "serve:ssr:frond-end": "node dist/frond-end/server/server.mjs"
+    "serve:ssr:frond-end": "node dist/frond-end/server/server.mjs",
+    
+    "docker:dev": "docker-compose -f docker-compose.dev.yml up frontend-dev",
+    "docker:dev:build": "docker-compose -f docker-compose.dev.yml up --build frontend-dev",
+    "docker:prod": "docker-compose -f docker-compose.dev.yml up frontend-prod",
+    "docker:prod:build": "docker-compose -f docker-compose.dev.yml up --build frontend-prod",
+    "docker:build": "docker-compose -f docker-compose.dev.yml build",
+    "docker:down": "docker-compose -f docker-compose.dev.yml down",
+    "docker:clean": "docker-compose -f docker-compose.dev.yml down -v --rmi all",
+    
+    "ssl:setup": "mkdir -p ssl && cp ../certs/localhost*.pem ssl/ 2>/dev/null || echo 'SSL certs not found in ../certs, will be generated automatically'",
+    "ssl:generate": "openssl req -x509 -nodes -newkey rsa:2048 -days 365 -keyout ssl/localhost-key.pem -out ssl/localhost.pem -subj '/CN=localhost'",
+    "setup": "npm run ssl:setup"
   },
   "private": true,
   "dependencies": {

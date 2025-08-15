@@ -111,8 +111,12 @@ CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOWED_ORIGINS = [
     "https://localhost:4200",
+    "http://localhost:4200",
+    "http://localhost:8006",
+    "https://localhost:8444",
     "https://localhost:8001",
     "https://localhost:8002",
+    "https://localhost:8003",
 ]
 
 # HTTPS Security settings
@@ -124,6 +128,8 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 
 CSRF_TRUSTED_ORIGINS = [
     'https://localhost:4200',
+    'http://localhost:8006',
+    'https://localhost:8444',
     'https://localhost:8003',
     'https://localhost:8001',
 ]

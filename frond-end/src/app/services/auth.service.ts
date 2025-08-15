@@ -17,7 +17,7 @@ export interface LoginResponse {
   providedIn: 'root'
 })
 export class AuthService {
-  private apiUrl = 'https://localhost:8001/api';  // HTTPS for users microservice
+  private apiUrl = '/api/users';  // relative same-origin path
   private currentUserSubject = new BehaviorSubject<any>(null);
   public currentUser$ = this.currentUserSubject.asObservable();
   private isBrowser: boolean;
@@ -39,9 +39,8 @@ export class AuthService {
 
   login(username: string, password: string, rememberMe: boolean = false): Observable<LoginResponse> {
     const credentials = { username, password };
-    
     return this.http.post<LoginResponse>(`${this.apiUrl}/login/`, credentials, {
-      withCredentials: true  // Include cookies in requests
+      withCredentials: true
     }).pipe(
       tap(response => {
         if (this.isBrowser) {

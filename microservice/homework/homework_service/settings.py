@@ -118,6 +118,9 @@ CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOWED_ORIGINS = [
     "https://localhost:4200",
+    "http://localhost:4200",
+    "http://localhost:8006",     
+    "https://localhost:8444",    # ADD THIS
     "https://localhost:8001",
     "https://localhost:8002",
     "https://localhost:8003",
@@ -131,6 +134,8 @@ CSRF_COOKIE_SECURE = True
 
 CSRF_TRUSTED_ORIGINS = [
     'https://localhost:4200',
+    'http://localhost:8006',
+    'https://localhost:8444',    # ADD THIS
     'https://localhost:8004',  # This service
 ]
 

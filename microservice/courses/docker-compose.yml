@@ -27,8 +27,8 @@ services:
     container_name: courses_service
     environment:
       - DB_NAME=courses_db
-      - DB_USER=crm_user
-      - DB_PASSWORD=crm_password
+      - DB_USER=root
+      - DB_PASSWORD=password
       - DB_HOST=mysql_courses
       - DB_PORT=3306
     depends_on:

@@ -96,17 +96,17 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [],
 }
 
-# CORS Configuration for HTTPS
-# REMOVE wildcard when using credentials
-# CORS_ALLOW_ALL_ORIGINS = True  # Comment this out
+# CORS Configuration - Fix for frontend containers
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
-    "https://localhost:4200",
-    "http://localhost:4200",
-    "https://localhost:8001",
-    "https://localhost:8002",
-    "https://localhost:8003",
-    "https://localhost:8004",
+    "https://localhost:4200",    # Local Angular dev server
+    "http://localhost:4200",     # Local Angular dev server fallback
+    "http://localhost:8006",     # Frontend container HTTP
+    "https://localhost:8444",    # Frontend container HTTPS
+    "https://localhost:8001",    # Users service
+    "https://localhost:8002",    # Courses service
+    "https://localhost:8003",    # Messaging service
+    "https://localhost:8004",    # Homework service
 ]
 
 CORS_ALLOW_HEADERS = [
@@ -121,20 +121,23 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
     'cache-control',
     'pragma',
+    'x-forwarded-for',
+    'x-forwarded-proto',
 ]
 
-CORS_ALLOW_METHODS = ['GET','POST','PUT','PATCH','DELETE','OPTIONS']
+CORS_ALLOW_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']
 
-# Cookie / session tuning for cross-site (Angular at 4200)
-SESSION_COOKIE_SECURE = True          # keep True for HTTPS
+# Cookie settings for cross-origin
+SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_SAMESITE = "None"
 CSRF_COOKIE_SAMESITE = "None"
 
 CSRF_TRUSTED_ORIGINS = [
-    "https://localhost:4200",
-    "https://localhost:8001",
-    "http://localhost:4200",
+    'https://localhost:4200',
+    'http://localhost:8006',
+    'https://localhost:8444',    # ADD THIS
+    'https://localhost:8001',
 ]
 
 TIME_ZONE = 'UTC'

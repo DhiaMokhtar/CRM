@@ -21,6 +21,7 @@ services:
       retries: 10
       interval: 10s
       start_period: 40s
+    command: --default-authentication-plugin=mysql_native_password
 
   homework_service:
     build: .
@@ -37,47 +38,13 @@ services:
       - "8004:8000"
     volumes:
       - ./media:/app/media
-      - ../../localhost.pem:/certs-in/localhost.pem:ro
-      - ../../localhost-key.pem:/certs-in/localhost-key.pem:ro
+      - ../../certs:/certs-in:ro
     depends_on:
       mysql_homework:
         condition: service_healthy
     networks:
       - crm_network
-    external_links:
-      - users_service:users_service
     restart: unless-stopped
-    command: >
-      sh -c "
-        echo 'Waiting for MySQL to be ready...' &&
-        while ! mysqladmin ping -h mysql_homework -u root -ppassword --silent; do
-          echo 'Waiting for MySQL...' && sleep 2
-        done &&
-        echo 'MySQL is ready!' &&
-        if [ ! -f homework/migrations/0001_initial.py ] && ls homework/migrations/0002_* >/dev/null 2>&1; then
-          echo 'Fixing broken migrations chain...' &&
-          find homework/migrations -type f -name '0*.py' ! -name '__init__.py' -delete &&
-          python manage.py makemigrations homework
-        fi &&
-        echo 'Making migrations...' && python manage.py makemigrations &&
-        echo 'Running migrations...' && python manage.py migrate &&
-        echo 'Preparing SSL certs...' &&
-        mkdir -p /app/ssl &&
-        rm -f /app/ssl/localhost.pem /app/ssl/localhost-key.pem &&
-        if [ -f /certs-in/localhost.pem ] && [ -f /certs-in/localhost-key.pem ]; then
-           install -m 600 /certs-in/localhost.pem /app/ssl/localhost.pem &&
-           install -m 600 /certs-in/localhost-key.pem /app/ssl/localhost-key.pem;
-        else
-           echo 'Mounted certs missing -> generating self-signed cert' &&
-           openssl req -x509 -nodes -newkey rsa:2048 -days 365 \
-             -keyout /app/ssl/localhost-key.pem \
-             -out /app/ssl/localhost.pem \
-             -subj '/CN=localhost';
-        fi &&
-        ls -la /app/ssl &&
-        echo 'Starting Django server with HTTPS...' &&
-        python manage.py runsslserver 0.0.0.0:8000 --certificate /app/ssl/localhost.pem --key /app/ssl/localhost-key.pem
-      "
 
 volumes:
   mysql_homework_data:

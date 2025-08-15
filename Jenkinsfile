@@ -253,15 +253,19 @@ pipeline {
                     docker stop crm-frontend || true
                     docker rm crm-frontend || true
                     
-                    # Deploy frontend on port 8005 (avoiding Jenkins port 8080)
+                    # Deploy frontend with SSL certificate mount
                     docker run -d \
                         --name crm-frontend \
                         --network crm_network \
                         -p 8005:80 \
+                        -p 8443:443 \
+                        -v $(pwd)/certs:/etc/nginx/ssl:ro \
                         --restart unless-stopped \
                         crm-frontend:latest
                     
-                    echo "✅ Frontend deployed on http://localhost:8005"
+                    echo "✅ Frontend deployed"
+                    echo "   HTTP:  http://localhost:8005"
+                    echo "   HTTPS: https://localhost:8443"
                 '''
             }
         }
@@ -296,4 +300,28 @@ pipeline {
         success { echo "✅ CRM pipeline succeeded!" }
         failure { echo "❌ CRM pipeline failed!" }
     }
+}
+
+{
+  "projects": {
+    "frond-end": {
+      "architect": {
+        "serve": {
+          "builder": "@angular-devkit/build-angular:dev-server",
+          "configurations": {
+            "production": {
+              "buildTarget": "frond-end:build:production"
+            },
+            "development": {
+              "buildTarget": "frond-end:build:development",
+              "ssl": true,
+              "sslKey": "ssl/localhost-key.pem",
+              "sslCert": "ssl/localhost.pem"
+            }
+          },
+          "defaultConfiguration": "development"
+        }
+      }
+    }
+  }
 }
