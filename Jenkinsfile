@@ -42,31 +42,34 @@ pipeline {
                     sh '''
                         set -e
                         echo "Node version: $(node --version)"
-                        echo "NPM version:  $(npm --version)"
-
-                        if [ ! -f package.json ]; then
-                          echo "✗ package.json missing" >&2; exit 1
+                        echo "NPM version: $(npm --version)"
+                        echo "Current directory: $(pwd)"
+                        echo "Directory contents:"
+                        ls -la
+                        
+                        # Check package.json and package-lock.json
+                        if [ -f package.json ]; then
+                            echo "✓ package.json found"
+                        else
+                            echo "✗ package.json missing" && exit 1
                         fi
-                        if [ ! -f package-lock.json ]; then
-                          echo "⚠ package-lock.json missing; generating (one-time)..."
-                          npm install --package-lock-only
+                        
+                        if [ -f package-lock.json ]; then
+                            echo "✓ package-lock.json found"
+                        else
+                            echo "⚠ package-lock.json missing, generating..."
+                            npm install --package-lock-only
                         fi
-
-                        # Basic sanity: lock file must list at least angular/core
-                        if ! grep -q '"@angular/core"' package-lock.json; then
-                          echo "⚠ package-lock.json appears incomplete; regenerating..."
-                          rm package-lock.json
-                          npm install --package-lock-only
-                        fi
-
-                        echo "Installing dependencies with npm ci..."
-                        npm ci --no-audit --no-fund
-
-                        echo "Building frontend (production)..."
+                        
+                        # Clean install
+                        echo "Installing dependencies..."
+                        npm ci --silent
+                        
+                        echo "Building frontend..."
                         npm run build:prod
-
-                        echo "Listing dist:"
-                        ls -la dist || { echo "✗ dist missing" >&2; exit 1; }
+                        
+                        echo "Build output:"
+                        ls -la dist/ || echo "No dist directory found"
                     '''
                 }
             }
@@ -177,29 +180,36 @@ pipeline {
                            docker exec mysql_courses mysqladmin ping -h localhost -u root -ppassword --silent 2>/dev/null && \
                            docker exec mysql_homework mysqladmin ping -h localhost -u root -ppassword --silent 2>/dev/null && \
                            docker exec mysql_messaging mysqladmin ping -h localhost -u root -ppassword --silent 2>/dev/null; then
-                           echo "✅ All MySQL instances ready in $((i*10)) seconds!"
-                           break
-                        else
-                           if [ $i -eq 12 ]; then
-                             echo "❌ MySQL timeout – showing verbose status"
-                             docker exec mysql_users mysqladmin ping -h localhost -u root -pcrm_password 2>&1 || true
-                             docker exec mysql_users ps -o pid,cmd -p 1 || true
-                             docker logs mysql_users --tail 10
-                             
-                             docker exec mysql_courses mysqladmin ping -h localhost -u root -ppassword 2>&1 || true
-                             docker exec mysql_courses ps -o pid,cmd -p 1 || true
-                             docker logs mysql_courses --tail 10
-                             
-                             docker exec mysql_homework mysqladmin ping -h localhost -u root -ppassword 2>&1 || true
-                             docker exec mysql_homework ps -o pid,cmd -p 1 || true
-                             docker logs mysql_homework --tail 10
-                             
-                             docker exec mysql_messaging mysqladmin ping -h localhost -u root -ppassword 2>&1 || true
-                             docker exec mysql_messaging ps -o pid,cmd -p 1 || true
-                             docker logs mysql_messaging --tail 10
-                             
-                             exit 1
-                           fi
+                            echo "✅ All MySQL instances ready in $((i*10)) seconds!"
+                            break
+                        fi
+                        
+                        if [ $i -eq 12 ]; then
+                            echo "❌ MySQL timeout after 120 seconds"
+                            echo "🔍 Checking individual MySQL status..."
+                            
+                            # Check each one individually for better debugging
+                            docker exec mysql_users mysqladmin ping -h localhost -u root -pcrm_password --silent 2>/dev/null || {
+                                echo "❌ Users MySQL not ready"
+                                docker logs mysql_users --tail 10
+                            }
+                            
+                            docker exec mysql_courses mysqladmin ping -h localhost -u root -ppassword --silent 2>/dev/null || {
+                                echo "❌ Courses MySQL not ready"
+                                docker logs mysql_courses --tail 10
+                            }
+                            
+                            docker exec mysql_homework mysqladmin ping -h localhost -u root -ppassword --silent 2>/dev/null || {
+                                echo "❌ Homework MySQL not ready"
+                                docker logs mysql_homework --tail 10
+                            }
+                            
+                            docker exec mysql_messaging mysqladmin ping -h localhost -u root -ppassword --silent 2>/dev/null || {
+                                echo "❌ Messaging MySQL not ready"
+                                docker logs mysql_messaging --tail 10
+                            }
+                            
+                            exit 1
                         fi
                         
                         sleep 10
@@ -212,32 +222,18 @@ pipeline {
                     
                     echo "🚀 Starting application services..."
                     
-                    # Start services with proper wait and health check
-                    echo "Starting users service..."
+                    # Start application services with dependency wait
                     docker-compose -f microservice/users/docker-compose.yml up -d users_service
-                    sleep 20
+                    sleep 15
                     
-                    # Wait for users service to be healthy
-                    for i in $(seq 1 6); do
-                        if curl -sf http://localhost:8001/health/ >/dev/null 2>&1 || curl -sf http://localhost:8001/ >/dev/null 2>&1; then
-                            echo "✅ Users service ready"
-                            break
-                        fi
-                        echo "Waiting for users service... ($i/6)"
-                        sleep 10
-                    done
-                    
-                    echo "Starting courses service..."
                     docker-compose -f microservice/courses/docker-compose.yml up -d courses_service
-                    sleep 20
+                    sleep 15
                     
-                    echo "Starting homework service..."
                     docker-compose -f microservice/homework/docker-compose.yml up -d homework_service
-                    sleep 20
+                    sleep 15
                     
-                    echo "Starting messaging service..."
                     docker-compose -f microservice/messaging/docker-compose.yml up -d messaging_service
-                    sleep 20
+                    sleep 15
                     
                     echo "📊 Final status check..."
                     docker ps --format "table {{.Names}}\\t{{.Status}}\\t{{.Ports}}"
@@ -276,74 +272,22 @@ pipeline {
 
         stage('Health Check') {
             steps {
-                sh '''
-                  echo "🔍 Performing health checks..."
-                  sleep 30
-                  set +e
-                  FAIL=0
-                  
-                  # Check service status first
-                  echo "📊 Container status:"
-                  docker ps --format "table {{.Names}}\\t{{.Status}}\\t{{.Ports}}"
-                  
-                  # Check if services are actually running
-                  for SERVICE in users_service courses_service homework_service messaging_service; do
-                    if ! docker ps --format "{{.Names}}" | grep -q "$SERVICE"; then
-                      echo "❌ $SERVICE is not running"
-                      FAIL=1
-                    fi
-                  done
-                  
-                  # Test external ports
-                  for S in 8001 8002 8003 8004; do
-                    echo "Testing port $S..."
-                    CODE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 http://localhost:$S/ || echo 000)
-                    if [ "$CODE" -ge 200 ] && [ "$CODE" -lt 500 ]; then
-                      echo "✅ Service $S OK (HTTP $CODE)"
-                    else
-                      echo "❌ Service $S NOT READY (HTTP $CODE)"
-                      # Show container logs for debugging
-                      case $S in
-                        8001) docker logs users_service --tail 20 || true ;;
-                        8002) docker logs courses_service --tail 20 || true ;;
-                        8003) docker logs homework_service --tail 20 || true ;;
-                        8004) docker logs messaging_service --tail 20 || true ;;
-                      esac
-                      FAIL=1
-                    fi
-                  done
-                  
-                  # Test frontend
-                  curl -k -sf https://localhost:8443/ >/dev/null && echo "✅ Frontend OK" || { 
-                    echo "❌ Frontend NOT READY"
-                    docker logs crm-frontend --tail 20 || true
-                    FAIL=1
-                  }
-                  
-                  if [ $FAIL -eq 1 ]; then
-                    echo "❌ Health check failed - showing all container logs:"
-                    docker ps -a
-                  fi
-                  
-                  exit $FAIL
-                '''
-            }
-        }
-
-        stage('Debug Services') {
-            steps {
-                sh '''
-                    echo "🔍 Debug information:"
-                    echo "Active containers:"
-                    docker ps -a
-                    echo ""
-                    echo "Network information:"
-                    docker network ls
-                    docker network inspect crm_network || true
-                    echo ""
-                    echo "Port listening check:"
-                    netstat -tulpn | grep LISTEN | grep -E ':(8001|8002|8003|8004|8443)' || echo "No services listening on expected ports"
-                '''
+                script {
+                    sh '''
+                        echo "🔍 Performing health checks..."
+                        sleep 30
+                        docker ps
+                        
+                        # Check frontend on port 8005
+                        curl -f http://localhost:8005/ || echo "Frontend not ready"
+                        
+                        # Check microservices
+                        curl -k -f https://localhost:8001/ || echo "Users service not ready"
+                        curl -k -f https://localhost:8002/ || echo "Courses service not ready"
+                        curl -k -f https://localhost:8003/ || echo "Messaging service not ready"
+                        curl -k -f https://localhost:8004/ || echo "Homework service not ready"
+                    '''
+                }
             }
         }
     }

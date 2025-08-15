@@ -18,7 +18,6 @@ RUN rm -rf /app/ssl/localhost.pem /app/ssl/localhost-key.pem && mkdir -p /app/ss
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 ENTRYPOINT ["/app/entrypoint.sh"]
-CMD ["python", "manage.py", "runsslserver", "0.0.0.0:8000", "--certificate", "/app/ssl/localhost.pem", "--key", "/app/ssl/localhost-key.pem"]
 
 # Expose port
 EXPOSE 8000

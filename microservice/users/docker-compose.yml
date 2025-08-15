@@ -3,36 +3,44 @@ version: '3.8'
 services:
   mysql_users:
     image: mysql:8.0
+    container_name: mysql_users
     environment:
       MYSQL_ROOT_PASSWORD: crm_password
       MYSQL_DATABASE: users_db
       MYSQL_USER: crm_user
       MYSQL_PASSWORD: crm_password
     ports:
-      - "3307:3306"  # Changed to avoid conflict with host MySQL
+      - "3307:3306"
     volumes:
       - mysql_users_data:/var/lib/mysql
     networks:
       - crm_network
-    command: --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pcrm_password"]
+      timeout: 20s
+      retries: 10
+      interval: 10s
+      start_period: 40s
 
   users_service:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: users_users_service:latest
-    ports:
-      - "8001:8000"
-    depends_on:
-      - mysql_users
+    build: .
+    container_name: users_service
+    env_file:
+      - .env
     environment:
-      - DB_HOST=mysql_users
+      - DB_NAME=users_db
       - DB_USER=crm_user
       - DB_PASSWORD=crm_password
-      - DB_NAME=users_db
+      - DB_HOST=mysql_users
+      - DB_PORT=3306
       - ROOT_PASSWORD=crm_password
+    depends_on:
+      mysql_users:
+        condition: service_healthy
     volumes:
       - ../../certs:/certs-in:ro
+    ports:
+      - "8001:8000"
     networks:
       - crm_network
     restart: unless-stopped
@@ -43,3 +51,4 @@ volumes:
 networks:
   crm_network:
     external: true
+    name: crm_network
