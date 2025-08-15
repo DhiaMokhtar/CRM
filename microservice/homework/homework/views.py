@@ -5,8 +5,9 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from django.db.models import Q
 from django.utils import timezone
-from .models import Homework, HomeworkSubmission, StudentComment
-from .serializers import HomeworkSerializer, HomeworkSubmissionSerializer, StudentCommentSerializer
+from .models import Homework, HomeworkSubmission, StudentComment, Schedule
+from .serializers import HomeworkSerializer, HomeworkSubmissionSerializer, StudentCommentSerializer, ScheduleSerializer
+from datetime import datetime, timedelta
 import requests
 import logging
 
@@ -302,3 +303,87 @@ class HealthCheckView(APIView):
             'status': 'healthy',
             'service': 'homework'
         })
+
+class ScheduleViewSet(viewsets.ModelViewSet):
+    queryset = Schedule.objects.all()
+    serializer_class = ScheduleSerializer
+    
+    def get_queryset(self):
+        queryset = Schedule.objects.all()
+        
+        # Filter by classroom
+        classroom_id = self.request.query_params.get('classroom', None)
+        if classroom_id:
+            queryset = queryset.filter(classroom_id=classroom_id)
+        
+        # Filter by teacher
+        teacher_id = self.request.query_params.get('teacher', None)
+        if teacher_id:
+            queryset = queryset.filter(teacher_id=teacher_id)
+        
+        # Filter by schedule type
+        schedule_type = self.request.query_params.get('type', None)
+        if schedule_type:
+            queryset = queryset.filter(schedule_type=schedule_type)
+        
+        return queryset.order_by('start_datetime')
+
+class ScheduleWeeklyView(APIView):
+    """Get schedules for a specific week"""
+    
+    def get(self, request):
+        week_start = request.query_params.get('week_start')
+        if not week_start:
+            return Response({'error': 'week_start parameter is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            start_date = datetime.strptime(week_start, '%Y-%m-%d')
+            end_date = start_date + timedelta(days=7)
+            
+            schedules = Schedule.objects.filter(
+                start_datetime__gte=start_date,
+                start_datetime__lt=end_date
+            ).order_by('start_datetime')
+            
+            serializer = ScheduleSerializer(schedules, many=True)
+            return Response({'schedules': serializer.data})
+            
+        except ValueError:
+            return Response({'error': 'Invalid date format. Use YYYY-MM-DD'}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.error(f"Error in weekly schedule view: {str(e)}")
+            return Response({'error': 'Internal server error'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class ScheduleMonthlyView(APIView):
+    """Get schedules for a specific month"""
+    
+    def get(self, request):
+        year = request.query_params.get('year')
+        month = request.query_params.get('month')
+        
+        if not year or not month:
+            return Response({'error': 'year and month parameters are required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            year = int(year)
+            month = int(month)
+            
+            start_date = datetime(year, month, 1)
+            if month == 12:
+                end_date = datetime(year + 1, 1, 1)
+            else:
+                end_date = datetime(year, month + 1, 1)
+            
+            schedules = Schedule.objects.filter(
+                start_datetime__gte=start_date,
+                start_datetime__lt=end_date
+            ).order_by('start_datetime')
+            
+            serializer = ScheduleSerializer(schedules, many=True)
+            return Response({'schedules': serializer.data})
+            
+        except ValueError:
+            return Response({'error': 'Invalid year or month'}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.error(f"Error in monthly schedule view: {str(e)}")
+            return Response({'error': 'Internal server error'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

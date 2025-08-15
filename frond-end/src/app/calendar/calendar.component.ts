@@ -70,38 +70,49 @@ export class CalendarComponent implements OnInit {
   }
   
   loadSchedules(): void {
-    const endpoint = this.currentView === 'week' ? 'weekly_view' : 'monthly_view';
-    const params = this.currentView === 'week' 
-      ? { week_start: this.getWeekStart() }
-      : { year: this.currentDate.getFullYear(), month: this.currentDate.getMonth() + 1 };
-    
-    this.apiService.get(`schedules/${endpoint}/`, params).subscribe({
-      next: (response) => {
-        console.log(response);
-        this.schedules = response.schedules;
-      },
-      error: (error) => {
-        console.error('Error loading schedules:', error);
-      }
-    });
+    if (this.currentView === 'week') {
+      const weekStart = this.getWeekStart();
+      this.apiService.getSchedulesWeekly(weekStart).subscribe({
+        next: (response) => {
+          this.schedules = response.schedules || response;
+        },
+        error: (error) => {
+          console.error('Error loading weekly schedules:', error);
+        }
+      });
+    } else {
+      const year = this.currentDate.getFullYear().toString();
+      const month = (this.currentDate.getMonth() + 1).toString();
+      this.apiService.getSchedulesMonthly(year, month).subscribe({
+        next: (response) => {
+          this.schedules = response.schedules || response;
+        },
+        error: (error) => {
+          console.error('Error loading monthly schedules:', error);
+        }
+      });
+    }
   }
   
   loadClassrooms(): void {
-    this.apiService.get('classes/').subscribe({
+    // Use the correct microservice method
+    this.apiService.getClasses().subscribe({
       next: (data) => this.classrooms = data,
       error: (error) => console.error('Error loading classrooms:', error)
     });
   }
   
   loadTeachers(): void {
-    this.apiService.get('teachers/').subscribe({
+    // Use the correct microservice method
+    this.apiService.getTeachers().subscribe({
       next: (data) => this.teachers = data,
       error: (error) => console.error('Error loading teachers:', error)
     });
   }
   
   loadLessons(): void {
-    this.apiService.get('lessons/').subscribe({
+    // Use the correct microservice method - get all lessons without filtering by classroom
+    this.apiService.getLessons().subscribe({
       next: (data) => this.lessons = data,
       error: (error) => console.error('Error loading lessons:', error)
     });
@@ -148,24 +159,34 @@ export class CalendarComponent implements OnInit {
   }
   
   addSchedule() {
-    console.log(localStorage.getItem('currentUser'));
     const current = localStorage.getItem('currentUser');
     if (current) {
-      const currentUser =  JSON.parse(current);
-      this.newSchedule.user_type =currentUser.user_type;
-    this.newSchedule.user_id = currentUser.user_id;
-    this.apiService.post('schedules/', this.newSchedule).subscribe({
-      next: (response) => {
-        this.loadSchedules();
-        this.closeAddScheduleModal();
-      },
-      error: (error) => {
-        console.error('Error adding schedule:', error);
-      }
-    });
+      const currentUser = JSON.parse(current);
+      this.newSchedule.user_type = currentUser.user_type;
+      this.newSchedule.user_id = currentUser.user_id;
+      
+      // Convert string values to integers for foreign keys
+      const payload = {
+        ...this.newSchedule,
+        classroom_id: this.newSchedule.classroom ? parseInt(this.newSchedule.classroom, 10) : null,
+        teacher_id: this.newSchedule.teacher ? parseInt(this.newSchedule.teacher, 10) : null,
+        lesson_id: this.newSchedule.lesson ? parseInt(this.newSchedule.lesson, 10) : null,
+      };
+      
+      console.log('Schedule payload:', payload);
+      
+      this.apiService.createSchedule(payload).subscribe({
+        next: (response) => {
+          console.log('Schedule created successfully:', response);
+          this.loadSchedules();
+          this.closeAddScheduleModal();
+        },
+        error: (error) => {
+          console.error('Error adding schedule:', error);
+          alert('Failed to create schedule. Please try again.');
+        }
+      });
     }
-    
-    
   }
   
   resetNewSchedule(): void {

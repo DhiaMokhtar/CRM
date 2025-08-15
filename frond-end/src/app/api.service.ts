@@ -280,21 +280,29 @@ export class ApiService {
     return this.http.delete<void>(`${this.usersServiceUrl}/parents/${id}/`, { withCredentials: true });
   }
 
-  // Add calendar/schedule methods
+  // Add calendar/schedule methods (use homework microservice)
   getSchedules(): Observable<any[]> {
-    return this.http.get<any[]>(`${this.baseUrl}/schedules/`, { withCredentials: true });
+    return this.http.get<any[]>(`${this.homeworkServiceUrl}/schedules/`, { withCredentials: true });
+  }
+
+  getSchedulesMonthly(year: string, month: string): Observable<any> {
+    return this.http.get<any>(`${this.homeworkServiceUrl}/schedules/monthly_view/?year=${year}&month=${month}`, { withCredentials: true });
+  }
+
+  getSchedulesWeekly(weekStart: string): Observable<any> {
+    return this.http.get<any>(`${this.homeworkServiceUrl}/schedules/weekly_view/?week_start=${weekStart}`, { withCredentials: true });
   }
 
   createSchedule(schedule: any): Observable<any> {
-    return this.http.post<any>(`${this.baseUrl}/schedules/`, schedule, { withCredentials: true });
+    return this.http.post<any>(`${this.homeworkServiceUrl}/schedules/`, schedule, { withCredentials: true });
   }
 
   updateSchedule(id: number, schedule: any): Observable<any> {
-    return this.http.put<any>(`${this.baseUrl}/schedules/${id}/`, schedule, { withCredentials: true });
+    return this.http.put<any>(`${this.homeworkServiceUrl}/schedules/${id}/`, schedule, { withCredentials: true });
   }
 
   deleteSchedule(id: number): Observable<any> {
-    return this.http.delete<any>(`${this.baseUrl}/schedules/${id}/`, { withCredentials: true });
+    return this.http.delete<any>(`${this.homeworkServiceUrl}/schedules/${id}/`, { withCredentials: true });
   }
 
   // Fix the get method to accept URL and optional params
