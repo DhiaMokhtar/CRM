@@ -9,7 +9,7 @@ services:
       MYSQL_USER: crm_user
       MYSQL_PASSWORD: crm_password
     ports:
-      - "3306:3306"
+      - "3307:3306"  # Changed to avoid conflict with host MySQL
     volumes:
       - mysql_users_data:/var/lib/mysql
     networks:
