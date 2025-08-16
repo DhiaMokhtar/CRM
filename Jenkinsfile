@@ -85,8 +85,8 @@ pipeline {
                     docker-compose -f microservice/courses/docker-compose.yml up -d mysql_courses
                     docker-compose -f microservice/homework/docker-compose.yml up -d mysql_homework
                     docker-compose -f microservice/messaging/docker-compose.yml up -d mysql_messaging
-                    echo "⏳ Waiting 20 seconds for MySQL containers to initialize..."
-                    sleep 20
+                    echo "⏳ Waiting 60 seconds for MySQL containers to initialize..."
+                    sleep 60
                     docker ps
                     
                     echo "🚀 Starting application services..."
