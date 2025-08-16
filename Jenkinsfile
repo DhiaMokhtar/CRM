@@ -17,16 +17,31 @@ pipeline {
         stage('Prepare SSL certs') {
             steps {
                 sh '''
+                    echo "🔐 Preparing SSL certificates..."
                     mkdir -p certs
-                    # Ensure certs exist (if already in certs/ do NOT copy duplicates silently)
+                    
+                    # Copy certificates to certs directory if they exist at root
                     if [ -f localhost.pem ] && [ -f localhost-key.pem ]; then
-                      cp -n localhost.pem certs/ || true
-                      cp -n localhost-key.pem certs/ || true
+                        echo "Copying certificates from root to certs/"
+                        cp localhost.pem certs/
+                        cp localhost-key.pem certs/
                     fi
-                    echo "Listing root certs dir:"
+                    
+                    # Verify certificates exist and are not empty
+                    echo "Verifying certificates:"
                     ls -la certs/
-                    test -s certs/localhost.pem
-                    test -s certs/localhost-key.pem
+                    
+                    if [ ! -s certs/localhost.pem ]; then
+                        echo "ERROR: localhost.pem is missing or empty"
+                        exit 1
+                    fi
+                    
+                    if [ ! -s certs/localhost-key.pem ]; then
+                        echo "ERROR: localhost-key.pem is missing or empty"
+                        exit 1
+                    fi
+                    
+                    echo "✅ Certificates verified successfully"
                 '''
             }
         }
@@ -74,25 +89,38 @@ pipeline {
                     docker network rm crm_network || true
                     docker network create crm_network
                     
+                    echo "🔍 Final verification of certificates before deployment:"
+                    ls -la certs/
+                    if [ ! -s certs/localhost.pem ] || [ ! -s certs/localhost-key.pem ]; then
+                        echo "ERROR: Certificates missing before deployment!"
+                        exit 1
+                    fi
+                    
                     echo "🚀 Starting MySQL databases first..."
                     docker-compose -f microservice/users/docker-compose.yml up -d mysql_users
                     docker-compose -f microservice/courses/docker-compose.yml up -d mysql_courses
                     docker-compose -f microservice/homework/docker-compose.yml up -d mysql_homework
                     docker-compose -f microservice/messaging/docker-compose.yml up -d mysql_messaging
                     
-                    echo "⏳ Waiting 60 seconds for MySQL containers to initialize..."
+                    echo "⏳ Waiting for MySQL containers to initialize..."
                     sleep 60
-                    docker ps
+                    
+                    echo "🔍 Testing certificate mount before starting services..."
+                    # Create a test container to verify mount works
+                    docker run --rm -v "$(pwd)/certs:/test-mount:ro" alpine ls -la /test-mount/
                     
                     echo "🚀 Starting application services..."
                     docker-compose -f microservice/users/docker-compose.yml up -d users_service
+                    
+                    echo "🔍 Debugging: Check if certificates are accessible in container:"
+                    sleep 10
+                    docker exec users_service ls -la /certs-in/ || echo "Mount failed"
+                    
                     docker-compose -f microservice/courses/docker-compose.yml up -d courses_service
                     docker-compose -f microservice/homework/docker-compose.yml up -d homework_service
                     docker-compose -f microservice/messaging/docker-compose.yml up -d messaging_service
                     
                     echo "✅ All services started"
-                    echo "Waiting for services to be ready..."
-                    sleep 30
                 '''
             }
         }
