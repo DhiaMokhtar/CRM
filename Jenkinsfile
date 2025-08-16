@@ -18,11 +18,16 @@ pipeline {
             steps {
                 sh '''
                     mkdir -p certs
-                    if [ ! -f certs/localhost.pem ] || [ ! -f certs/localhost-key.pem ]; then
-                        cp localhost.pem certs/ || true
-                        cp localhost-key.pem certs/ || true
-                    fi
-                    chmod 600 certs/localhost.pem certs/localhost-key.pem
+                    # Copy both certificate files
+                    cp localhost.pem certs/ || true
+                    cp localhost-key.pem certs/ || true
+                    
+                    # Set proper permissions
+                    chmod 644 certs/localhost.pem || true
+                    chmod 600 certs/localhost-key.pem || true
+                    
+                    echo "SSL certificates prepared:"
+                    ls -la certs/
                 '''
             }
         }
@@ -87,6 +92,8 @@ pipeline {
                     docker-compose -f microservice/messaging/docker-compose.yml up -d messaging_service
                     
                     echo "✅ All services started"
+                    echo "Waiting for services to be ready..."
+                    sleep 30
                 '''
             }
         }
@@ -95,15 +102,20 @@ pipeline {
             steps {
                 script {
                     echo '🔍 Performing health checks...'
-                    sh 'sleep 30'
                     sh 'docker ps'
                     
                     sh '''
-                        echo "Checking microservices..."
-                        curl -f http://localhost:8001/ || echo "Users service not ready"
-                        curl -f http://localhost:8002/ || echo "Courses service not ready"
-                        curl -f http://localhost:8003/ || echo "Messaging service not ready"
-                        curl -f http://localhost:8004/ || echo "Homework service not ready"
+                        echo "Checking microservices with HTTPS..."
+                        curl -k -f https://localhost:8001/api/health/ || echo "Users service health check failed"
+                        curl -k -f https://localhost:8002/api/health/ || echo "Courses service health check failed"
+                        curl -k -f https://localhost:8003/api/health/ || echo "Messaging service health check failed"
+                        curl -k -f https://localhost:8004/api/health/ || echo "Homework service health check failed"
+                        
+                        echo "Checking container logs..."
+                        docker logs users_service --tail=10 || true
+                        docker logs courses_service --tail=10 || true
+                        docker logs homework_service --tail=10 || true
+                        docker logs messaging_service --tail=10 || true
                     '''
                 }
             }
@@ -122,19 +134,22 @@ pipeline {
             echo '- Courses: https://localhost:8002' 
             echo '- Messaging: https://localhost:8003'
             echo '- Homework: https://localhost:8004'
+            echo ''
+            echo 'To run frontend locally:'
+            echo 'cd frond-end && ng serve --ssl --ssl-key ssl/key.pem --ssl-cert ssl/cert.pem'
         }
         failure {
             echo '❌ CRM pipeline failed!'
             sh '''
                 echo "Service logs for debugging:"
-                docker logs mysql_users || true
-                docker logs mysql_courses || true
-                docker logs mysql_homework || true
-                docker logs mysql_messaging || true
-                docker logs users_service || true
-                docker logs courses_service || true
-                docker logs homework_service || true
-                docker logs messaging_service || true
+                docker logs mysql_users --tail=20 || true
+                docker logs mysql_courses --tail=20 || true
+                docker logs mysql_homework --tail=20 || true
+                docker logs mysql_messaging --tail=20 || true
+                docker logs users_service --tail=20 || true
+                docker logs courses_service --tail=20 || true
+                docker logs homework_service --tail=20 || true
+                docker logs messaging_service --tail=20 || true
             '''
         }
     }
