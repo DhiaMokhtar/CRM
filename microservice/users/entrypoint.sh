@@ -42,7 +42,12 @@ python manage.py collectstatic --noinput || true
 
 
 echo "[users] SSL setup (shared certs)"
-
+mkdir -p /app/ssl
+rm -f /app/ssl/localhost.pem /app/ssl/localhost-key.pem
+cp /localhost.pem /app/ssl/localhost.pem
+cp /localhost-key.pem /app/ssl/localhost-key.pem
+chmod 600 /app/ssl/localhost.pem
+chmod 600 /app/ssl/localhost-key.pem
 
 echo "[users] Starting HTTPS server (shared cert)"
 exec python manage.py runsslserver 0.0.0.0:8000 \
