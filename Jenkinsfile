@@ -17,22 +17,12 @@ pipeline {
         stage('Prepare SSL certs') {
             steps {
                 sh '''
-                    set -e
                     mkdir -p certs
-                    # Copy certificates to shared location
                     if [ ! -f certs/localhost.pem ] || [ ! -f certs/localhost-key.pem ]; then
                         cp localhost.pem certs/ || true
                         cp localhost-key.pem certs/ || true
                     fi
                     chmod 600 certs/localhost.pem certs/localhost-key.pem
-                    ls -la certs
-                    
-                    # Verify certificates exist
-                    if [ -f certs/localhost.pem ] && [ -f certs/localhost-key.pem ]; then
-                        echo "✓ Certificates ready for sharing"
-                    else
-                        echo "❌ Certificates missing - services will generate individual certs"
-                    fi
                 '''
             }
         }
@@ -85,6 +75,7 @@ pipeline {
                     docker-compose -f microservice/courses/docker-compose.yml up -d mysql_courses
                     docker-compose -f microservice/homework/docker-compose.yml up -d mysql_homework
                     docker-compose -f microservice/messaging/docker-compose.yml up -d mysql_messaging
+                    
                     echo "⏳ Waiting 60 seconds for MySQL containers to initialize..."
                     sleep 60
                     docker ps

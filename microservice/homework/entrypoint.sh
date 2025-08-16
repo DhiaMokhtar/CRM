@@ -25,7 +25,6 @@ mkdir -p /app/ssl
 rm -f /app/ssl/localhost.pem /app/ssl/localhost-key.pem
 
 if [[ -f /certs-in/localhost.pem && -f /certs-in/localhost-key.pem ]]; then
-  echo "[homework] Using existing certs"
   echo "[homework] Using provided SSL certificates"
   install -m 600 /certs-in/localhost.pem /app/ssl/localhost.pem
   install -m 600 /certs-in/localhost-key.pem /app/ssl/localhost-key.pem
