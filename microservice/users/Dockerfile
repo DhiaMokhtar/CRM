@@ -14,11 +14,6 @@ COPY . .
 # Ensure only a directory exists for SSL mount points; not file-named dirs
 RUN rm -rf /app/ssl/localhost.pem /app/ssl/localhost-key.pem && mkdir -p /app/ssl /app/media && chmod 700 /app/ssl
 
-# Copy SSL certificates during build
-COPY ../../certs/localhost.pem /app/ssl/localhost.pem
-COPY ../../certs/localhost-key.pem /app/ssl/localhost-key.pem
-RUN chmod 600 /app/ssl/localhost.pem /app/ssl/localhost-key.pem
-
 # Copy entrypoint script
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
