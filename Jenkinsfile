@@ -4,6 +4,7 @@ pipeline {
     environment {
         DOCKER_BUILDKIT = '1'
         COMPOSE_DOCKER_CLI_BUILD = '1'
+        CERTS_PATH = "${env.WORKSPACE}/certs"
     }
     
     stages {
@@ -23,6 +24,8 @@ pipeline {
                         cp localhost-key.pem certs/ || true
                     fi
                     chmod 600 certs/localhost.pem certs/localhost-key.pem
+                    pwd
+                    ls -l certs
                 '''
             }
         }
@@ -59,6 +62,10 @@ pipeline {
         stage('Deploy Services') {
             steps {
                 sh '''
+                    pwd
+                    echo "certs ls"
+                    ls -l certs
+                    ls -l microservice/users/docker-compose.yml
                     echo "🧹 Cleaning up existing containers..."
                     docker-compose -f microservice/users/docker-compose.yml down -v || true
                     docker-compose -f microservice/courses/docker-compose.yml down -v || true
