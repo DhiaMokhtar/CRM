@@ -5,7 +5,7 @@ services:
     image: mysql:8.0
     container_name: mysql_homework
     environment:
-      MYSQL_ROOT_PASSWORD: password
+      MYSQL_ROOT_PASSWORD: crm_password
       MYSQL_DATABASE: homework_db
       MYSQL_USER: crm_user
       MYSQL_PASSWORD: crm_password
@@ -16,7 +16,7 @@ services:
     networks:
       - crm_network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-ppassword"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pcrm_password"]
       timeout: 20s
       retries: 10
       interval: 10s
@@ -25,12 +25,10 @@ services:
   homework_service:
     build: .
     container_name: homework_service
-    env_file:
-      - ../../.env
     environment:
       - DB_NAME=homework_db
-      - DB_USER=root
-      - DB_PASSWORD=password
+      - DB_USER=crm_user
+      - DB_PASSWORD=crm_password
       - DB_HOST=mysql_homework
       - DB_PORT=3306
     ports:

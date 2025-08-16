@@ -5,7 +5,7 @@ services:
     image: mysql:8.0
     container_name: mysql_messaging
     environment:
-      MYSQL_ROOT_PASSWORD: password
+      MYSQL_ROOT_PASSWORD: crm_password
       MYSQL_DATABASE: messaging_db
       MYSQL_USER: crm_user
       MYSQL_PASSWORD: crm_password
@@ -16,22 +16,19 @@ services:
     networks:
       - crm_network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-ppassword"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pcrm_password"]
       interval: 5s
       timeout: 5s
       retries: 20
       start_period: 15s
-    command: --default-authentication-plugin=caching_sha2_password
 
   messaging_service:
     build: .
     container_name: messaging_service
-    env_file:
-      - ../../.env
     environment:
       - DB_NAME=messaging_db
-      - DB_USER=root
-      - DB_PASSWORD=password
+      - DB_USER=crm_user
+      - DB_PASSWORD=crm_password
       - DB_HOST=mysql_messaging
       - DB_PORT=3306
     depends_on:
