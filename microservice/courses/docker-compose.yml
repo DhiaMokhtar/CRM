@@ -37,7 +37,7 @@ services:
     ports:
       - "8002:8000"
     volumes:
-      - ${CERT_PATH:-../../certs}:/certs-in:ro
+      - ../../certs:/certs-in:ro
       - ./fileCourses:/app/fileCourses
       - ./media:/app/media
     networks:

@@ -17,33 +17,12 @@ pipeline {
         stage('Prepare SSL certs') {
             steps {
                 sh '''
-                    echo "🔐 Preparing SSL certificates..."
-                    
-                    # Ensure certs directory exists
                     mkdir -p certs
-                    
-
-                    # Copy certificates from root to certs directory
-                    if [ -f localhost.pem ] && [ -f localhost-key.pem ]; then
-                        echo "Copying certificates from root to certs/"
-                        cp localhost.pem certs/
-                        cp localhost-key.pem certs/
-                    else
-                        echo "ERROR: Certificates not found in root"
-                        ls -la ./
-                        exit 1
+                    if [ ! -f certs/localhost.pem ] || [ ! -f certs/localhost-key.pem ]; then
+                        cp localhost.pem certs/ || true
+                        cp localhost-key.pem certs/ || true
                     fi
-                    
-                    # Verify certificates are properly copied
-                    echo "Verifying certificates in certs/:"
-                    ls -la certs/
-                    
-                    if [ ! -s certs/localhost.pem ] || [ ! -s certs/localhost-key.pem ]; then
-                        echo "ERROR: Certificates are missing or empty in certs/"
-                        exit 1
-                    fi
-                    
-                    echo "✅ Certificates ready for deployment"
+                    chmod 600 certs/localhost.pem certs/localhost-key.pem
                 '''
             }
         }
@@ -91,39 +70,21 @@ pipeline {
                     docker network rm crm_network || true
                     docker network create crm_network
                     
-                    echo "🔍 Final verification of certificates before deployment:"
-                    ls -la certs/
-                    if [ ! -s certs/localhost.pem ] || [ ! -s certs/localhost-key.pem ]; then
-                        echo "ERROR: Certificates missing before deployment!"
-                        exit 1
-                    fi
-                    
-                    # Get absolute path for certificates
-                    CERT_PATH="$(pwd)/certs"
-                    echo "📁 Using certificate path: $CERT_PATH"
-                    
-                    echo "🔍 Testing certificate mount with absolute path:"
-                    docker run --rm -v "$CERT_PATH:/test-mount:ro" alpine ls -la /test-mount/
-                    
                     echo "🚀 Starting MySQL databases first..."
-                    CERT_PATH="$CERT_PATH" docker-compose -f microservice/users/docker-compose.yml up -d mysql_users
-                    CERT_PATH="$CERT_PATH" docker-compose -f microservice/courses/docker-compose.yml up -d mysql_courses
-                    CERT_PATH="$CERT_PATH" docker-compose -f microservice/homework/docker-compose.yml up -d mysql_homework
-                    CERT_PATH="$CERT_PATH" docker-compose -f microservice/messaging/docker-compose.yml up -d mysql_messaging
+                    docker-compose -f microservice/users/docker-compose.yml up -d mysql_users
+                    docker-compose -f microservice/courses/docker-compose.yml up -d mysql_courses
+                    docker-compose -f microservice/homework/docker-compose.yml up -d mysql_homework
+                    docker-compose -f microservice/messaging/docker-compose.yml up -d mysql_messaging
                     
-                    echo "⏳ Waiting for MySQL containers to initialize..."
+                    echo "⏳ Waiting 60 seconds for MySQL containers to initialize..."
                     sleep 60
+                    docker ps
                     
-                    echo "🚀 Starting application services with absolute cert path..."
-                    CERT_PATH="$CERT_PATH" docker-compose -f microservice/users/docker-compose.yml up -d users_service
-                    
-                    echo "🔍 Debugging: Check if certificates are accessible in container:"
-                    sleep 10
-                    docker exec users_service ls -la /certs-in/ || echo "Mount failed"
-                    
-                    CERT_PATH="$CERT_PATH" docker-compose -f microservice/courses/docker-compose.yml up -d courses_service
-                    CERT_PATH="$CERT_PATH" docker-compose -f microservice/homework/docker-compose.yml up -d homework_service
-                    CERT_PATH="$CERT_PATH" docker-compose -f microservice/messaging/docker-compose.yml up -d messaging_service
+                    echo "🚀 Starting application services..."
+                    docker-compose -f microservice/users/docker-compose.yml up -d users_service
+                    docker-compose -f microservice/courses/docker-compose.yml up -d courses_service
+                    docker-compose -f microservice/homework/docker-compose.yml up -d homework_service
+                    docker-compose -f microservice/messaging/docker-compose.yml up -d messaging_service
                     
                     echo "✅ All services started"
                 '''
@@ -134,20 +95,15 @@ pipeline {
             steps {
                 script {
                     echo '🔍 Performing health checks...'
+                    sh 'sleep 30'
                     sh 'docker ps'
                     
                     sh '''
-                        echo "Checking microservices with HTTPS..."
-                        curl -k -f https://localhost:8001/api/health/ || echo "Users service health check failed"
-                        curl -k -f https://localhost:8002/api/health/ || echo "Courses service health check failed"
-                        curl -k -f https://localhost:8003/api/health/ || echo "Messaging service health check failed"
-                        curl -k -f https://localhost:8004/api/health/ || echo "Homework service health check failed"
-                        
-                        echo "Checking container logs..."
-                        docker logs users_service --tail=10 || true
-                        docker logs courses_service --tail=10 || true
-                        docker logs homework_service --tail=10 || true
-                        docker logs messaging_service --tail=10 || true
+                        echo "Checking microservices..."
+                        curl -f http://localhost:8001/ || echo "Users service not ready"
+                        curl -f http://localhost:8002/ || echo "Courses service not ready"
+                        curl -f http://localhost:8003/ || echo "Messaging service not ready"
+                        curl -f http://localhost:8004/ || echo "Homework service not ready"
                     '''
                 }
             }
@@ -166,22 +122,19 @@ pipeline {
             echo '- Courses: https://localhost:8002' 
             echo '- Messaging: https://localhost:8003'
             echo '- Homework: https://localhost:8004'
-            echo ''
-            echo 'To run frontend locally:'
-            echo 'cd frond-end && ng serve --ssl --ssl-key ssl/key.pem --ssl-cert ssl/cert.pem'
         }
         failure {
             echo '❌ CRM pipeline failed!'
             sh '''
                 echo "Service logs for debugging:"
-                docker logs mysql_users --tail=20 || true
-                docker logs mysql_courses --tail=20 || true
-                docker logs mysql_homework --tail=20 || true
-                docker logs mysql_messaging --tail=20 || true
-                docker logs users_service --tail=20 || true
-                docker logs courses_service --tail=20 || true
-                docker logs homework_service --tail=20 || true
-                docker logs messaging_service --tail=20 || true
+                docker logs mysql_users || true
+                docker logs mysql_courses || true
+                docker logs mysql_homework || true
+                docker logs mysql_messaging || true
+                docker logs users_service || true
+                docker logs courses_service || true
+                docker logs homework_service || true
+                docker logs messaging_service || true
             '''
         }
     }

@@ -38,7 +38,7 @@ services:
       - "8003:8000"
     volumes:
       - ./media:/app/media
-      - ${CERT_PATH:-../../certs}:/certs-in:ro
+      - ../../certs:/certs-in:ro
     networks:
       - crm_network
     restart: unless-stopped

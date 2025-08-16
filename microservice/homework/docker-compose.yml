@@ -35,7 +35,7 @@ services:
       - "8004:8000"
     volumes:
       - ./media:/app/media
-      - ${CERT_PATH:-../../certs}:/certs-in:ro
+      - ../../certs:/certs-in:ro
     depends_on:
       mysql_homework:
         condition: service_healthy
