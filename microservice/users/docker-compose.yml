@@ -38,7 +38,8 @@ services:
       mysql_users:
         condition: service_healthy
     volumes:
-      - ../../certs:/certs-in:ro
+      - ../../certs:/certs-in:ro  # Mount shared certificates
+      - ./users_service:/app
     ports:
       - "8001:8000"
     networks:
