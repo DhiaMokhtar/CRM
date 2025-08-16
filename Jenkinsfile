@@ -86,6 +86,7 @@ pipeline {
                     docker-compose -f microservice/homework/docker-compose.yml down -v || true
                     docker-compose -f microservice/messaging/docker-compose.yml down -v || true
                     
+
                     docker container prune -f
                     docker volume prune -f
                     docker network rm crm_network || true
@@ -98,32 +99,38 @@ pipeline {
                         exit 1
                     fi
                     
-                    # Get absolute path for certificates
-                    CERT_PATH="$(pwd)/certs"
-                    echo "📁 Using certificate path: $CERT_PATH"
+                    # Copy certs to /tmp which is accessible by Docker
+                    echo "📁 Copying certificates to Docker-accessible location..."
+                    sudo mkdir -p /tmp/crm-certs
+                    sudo cp certs/localhost.pem /tmp/crm-certs/
+                    sudo cp certs/localhost-key.pem /tmp/crm-certs/
+                    sudo chmod 644 /tmp/crm-certs/*
                     
-                    echo "🔍 Testing certificate mount with absolute path:"
-                    docker run --rm -v "$CERT_PATH:/test-mount:ro" alpine ls -la /test-mount/
+                    echo "🔍 Verifying certificates in /tmp/crm-certs:"
+                    ls -la /tmp/crm-certs/
+                    
+                    echo "🔍 Testing certificate mount with /tmp path:"
+                    docker run --rm -v /tmp/crm-certs:/test-mount:ro alpine ls -la /test-mount/
                     
                     echo "🚀 Starting MySQL databases first..."
-                    CERT_PATH="$CERT_PATH" docker-compose -f microservice/users/docker-compose.yml up -d mysql_users
-                    CERT_PATH="$CERT_PATH" docker-compose -f microservice/courses/docker-compose.yml up -d mysql_courses
-                    CERT_PATH="$CERT_PATH" docker-compose -f microservice/homework/docker-compose.yml up -d mysql_homework
-                    CERT_PATH="$CERT_PATH" docker-compose -f microservice/messaging/docker-compose.yml up -d mysql_messaging
+                    CERT_PATH=/tmp/crm-certs docker-compose -f microservice/users/docker-compose.yml up -d mysql_users
+                    CERT_PATH=/tmp/crm-certs docker-compose -f microservice/courses/docker-compose.yml up -d mysql_courses
+                    CERT_PATH=/tmp/crm-certs docker-compose -f microservice/homework/docker-compose.yml up -d mysql_homework
+                    CERT_PATH=/tmp/crm-certs docker-compose -f microservice/messaging/docker-compose.yml up -d mysql_messaging
                     
                     echo "⏳ Waiting for MySQL containers to initialize..."
                     sleep 60
                     
-                    echo "🚀 Starting application services with absolute cert path..."
-                    CERT_PATH="$CERT_PATH" docker-compose -f microservice/users/docker-compose.yml up -d users_service
+                    echo "🚀 Starting application services..."
+                    CERT_PATH=/tmp/crm-certs docker-compose -f microservice/users/docker-compose.yml up -d users_service
                     
                     echo "🔍 Debugging: Check if certificates are accessible in container:"
                     sleep 10
                     docker exec users_service ls -la /certs-in/ || echo "Mount failed"
                     
-                    CERT_PATH="$CERT_PATH" docker-compose -f microservice/courses/docker-compose.yml up -d courses_service
-                    CERT_PATH="$CERT_PATH" docker-compose -f microservice/homework/docker-compose.yml up -d homework_service
-                    CERT_PATH="$CERT_PATH" docker-compose -f microservice/messaging/docker-compose.yml up -d messaging_service
+                    CERT_PATH=/tmp/crm-certs docker-compose -f microservice/courses/docker-compose.yml up -d courses_service
+                    CERT_PATH=/tmp/crm-certs docker-compose -f microservice/homework/docker-compose.yml up -d homework_service
+                    CERT_PATH=/tmp/crm-certs docker-compose -f microservice/messaging/docker-compose.yml up -d messaging_service
                     
                     echo "✅ All services started"
                 '''
