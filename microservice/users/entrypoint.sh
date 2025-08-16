@@ -40,19 +40,20 @@ else:
 echo "[users] Collect static (if any)"
 python manage.py collectstatic --noinput || true
 
-echo "[users] SSL setup"
+
+echo "[users] SSL setup (shared certs)"
 mkdir -p /app/ssl
 rm -f /app/ssl/localhost.pem /app/ssl/localhost-key.pem
 if [[ -f /certs-in/localhost.pem && -f /certs-in/localhost-key.pem ]]; then
   install -m 600 /certs-in/localhost.pem /app/ssl/localhost.pem
   install -m 600 /certs-in/localhost-key.pem /app/ssl/localhost-key.pem
 else
-  echo "[users] Generating self-signed cert"
-  openssl req -x509 -nodes -newkey rsa:2048 -days 365 \
-    -keyout /app/ssl/localhost-key.pem \
-    -out /app/ssl/localhost.pem \
-    -subj "/CN=localhost"
+  echo "[users] ERROR: shared certificates not found in /certs-in"
+  ls -la /certs-in || true
+  exit 1
 fi
 
-echo "[users] Starting HTTPS server"
-exec python manage.py runsslserver 0.0.0.0:8000 --certificate /app/ssl/localhost.pem --key /app/ssl/localhost-key.pem
+echo "[users] Starting HTTPS server (shared cert)"
+exec python manage.py runsslserver 0.0.0.0:8000 \
+  --certificate /app/ssl/localhost.pem \
+  --key /app/ssl/localhost-key.pem

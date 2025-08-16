@@ -16,23 +16,18 @@ echo "[messaging] Migrations"
 python manage.py makemigrations
 python manage.py migrate
 
-echo "[messaging] SSL setup"
+
+echo "[messaging] SSL setup (shared certs)"
 mkdir -p /app/ssl
 rm -f /app/ssl/localhost.pem /app/ssl/localhost-key.pem
 if [[ -f /certs-in/localhost.pem && -f /certs-in/localhost-key.pem ]]; then
-  echo "[messaging] Using provided SSL certificates"
   install -m 600 /certs-in/localhost.pem /app/ssl/localhost.pem
   install -m 600 /certs-in/localhost-key.pem /app/ssl/localhost-key.pem
 else
-  echo "[messaging] Generating self-signed cert"
-  openssl req -x509 -nodes -newkey rsa:2048 -days 365 \
-    -keyout /app/ssl/localhost-key.pem \
-    -out /app/ssl/localhost.pem \
-    -subj "/CN=localhost"
+  echo "[messaging] ERROR: shared certificates missing"
+  exit 1
 fi
-
-ls -la /app/ssl/
-echo "[messaging] Starting HTTPS server..."
+echo "[messaging] Starting HTTPS server"
 exec python manage.py runsslserver 0.0.0.0:8000 \
   --certificate /app/ssl/localhost.pem \
   --key /app/ssl/localhost-key.pem

@@ -20,24 +20,19 @@ echo "[homework] Running migrations..."
 python manage.py makemigrations
 python manage.py migrate
 
-echo "[homework] SSL setup..."
+
+
+echo "[homework] SSL setup (shared certs)"
 mkdir -p /app/ssl
 rm -f /app/ssl/localhost.pem /app/ssl/localhost-key.pem
-
 if [[ -f /certs-in/localhost.pem && -f /certs-in/localhost-key.pem ]]; then
-  echo "[homework] Using provided SSL certificates"
   install -m 600 /certs-in/localhost.pem /app/ssl/localhost.pem
   install -m 600 /certs-in/localhost-key.pem /app/ssl/localhost-key.pem
 else
-  echo "[homework] Generating self-signed certificates"
-  openssl req -x509 -nodes -newkey rsa:2048 -days 365 \
-    -keyout /app/ssl/localhost-key.pem \
-    -out /app/ssl/localhost.pem \
-    -subj "/CN=localhost"
+  echo "[homework] ERROR: shared certificates missing"
+  exit 1
 fi
-
-ls -la /app/ssl/
-echo "[homework] Starting HTTPS server..."
+echo "[homework] Starting HTTPS server"
 exec python manage.py runsslserver 0.0.0.0:8000 \
   --certificate /app/ssl/localhost.pem \
   --key /app/ssl/localhost-key.pem

@@ -76,21 +76,20 @@
           "defaultConfiguration": "production"
         },
         "serve": {
-  "builder": "@angular-devkit/build-angular:dev-server",
-  "configurations": {
-    "production": {
-      "buildTarget": "frond-end:build:production"
-    },
-      "development": {
-        "buildTarget": "frond-end:build:development",
-        "ssl": true,
-        "sslKey": "ssl/key.pem",
-        "sslCert": "ssl/cert.pem"
-      }
-    },
-    "defaultConfiguration": "development"
-  }
-,
+          "builder": "@angular-devkit/build-angular:dev-server",
+          "configurations": {
+            "production": {
+              "buildTarget": "frond-end:build:production"
+            },
+            "development": {
+              "buildTarget": "frond-end:build:development",
+              "ssl": true,
+              "sslKey": "../localhost-key.pem",
+              "sslCert": "../localhost.pem"
+            }
+          },
+          "defaultConfiguration": "development"
+        },
         "extract-i18n": {
           "builder": "@angular-devkit/build-angular:extract-i18n"
         },
