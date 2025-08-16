@@ -18,30 +18,32 @@ pipeline {
             steps {
                 sh '''
                     echo "🔐 Preparing SSL certificates..."
+                    
+                    # Ensure certs directory exists
                     mkdir -p certs
                     
-                    # Copy certificates to certs directory if they exist at root
+
+                    # Copy certificates from root to certs directory
                     if [ -f localhost.pem ] && [ -f localhost-key.pem ]; then
                         echo "Copying certificates from root to certs/"
                         cp localhost.pem certs/
                         cp localhost-key.pem certs/
+                    else
+                        echo "ERROR: Certificates not found in root"
+                        ls -la ./
+                        exit 1
                     fi
                     
-                    # Verify certificates exist and are not empty
-                    echo "Verifying certificates:"
+                    # Verify certificates are properly copied
+                    echo "Verifying certificates in certs/:"
                     ls -la certs/
                     
-                    if [ ! -s certs/localhost.pem ]; then
-                        echo "ERROR: localhost.pem is missing or empty"
+                    if [ ! -s certs/localhost.pem ] || [ ! -s certs/localhost-key.pem ]; then
+                        echo "ERROR: Certificates are missing or empty in certs/"
                         exit 1
                     fi
                     
-                    if [ ! -s certs/localhost-key.pem ]; then
-                        echo "ERROR: localhost-key.pem is missing or empty"
-                        exit 1
-                    fi
-                    
-                    echo "✅ Certificates verified successfully"
+                    echo "✅ Certificates ready for deployment"
                 '''
             }
         }
@@ -96,29 +98,32 @@ pipeline {
                         exit 1
                     fi
                     
+                    # Get absolute path for certificates
+                    CERT_PATH="$(pwd)/certs"
+                    echo "📁 Using certificate path: $CERT_PATH"
+                    
+                    echo "🔍 Testing certificate mount with absolute path:"
+                    docker run --rm -v "$CERT_PATH:/test-mount:ro" alpine ls -la /test-mount/
+                    
                     echo "🚀 Starting MySQL databases first..."
-                    docker-compose -f microservice/users/docker-compose.yml up -d mysql_users
-                    docker-compose -f microservice/courses/docker-compose.yml up -d mysql_courses
-                    docker-compose -f microservice/homework/docker-compose.yml up -d mysql_homework
-                    docker-compose -f microservice/messaging/docker-compose.yml up -d mysql_messaging
+                    CERT_PATH="$CERT_PATH" docker-compose -f microservice/users/docker-compose.yml up -d mysql_users
+                    CERT_PATH="$CERT_PATH" docker-compose -f microservice/courses/docker-compose.yml up -d mysql_courses
+                    CERT_PATH="$CERT_PATH" docker-compose -f microservice/homework/docker-compose.yml up -d mysql_homework
+                    CERT_PATH="$CERT_PATH" docker-compose -f microservice/messaging/docker-compose.yml up -d mysql_messaging
                     
                     echo "⏳ Waiting for MySQL containers to initialize..."
                     sleep 60
                     
-                    echo "🔍 Testing certificate mount before starting services..."
-                    # Create a test container to verify mount works
-                    docker run --rm -v "$(pwd)/certs:/test-mount:ro" alpine ls -la /test-mount/
-                    
-                    echo "🚀 Starting application services..."
-                    docker-compose -f microservice/users/docker-compose.yml up -d users_service
+                    echo "🚀 Starting application services with absolute cert path..."
+                    CERT_PATH="$CERT_PATH" docker-compose -f microservice/users/docker-compose.yml up -d users_service
                     
                     echo "🔍 Debugging: Check if certificates are accessible in container:"
                     sleep 10
                     docker exec users_service ls -la /certs-in/ || echo "Mount failed"
                     
-                    docker-compose -f microservice/courses/docker-compose.yml up -d courses_service
-                    docker-compose -f microservice/homework/docker-compose.yml up -d homework_service
-                    docker-compose -f microservice/messaging/docker-compose.yml up -d messaging_service
+                    CERT_PATH="$CERT_PATH" docker-compose -f microservice/courses/docker-compose.yml up -d courses_service
+                    CERT_PATH="$CERT_PATH" docker-compose -f microservice/homework/docker-compose.yml up -d homework_service
+                    CERT_PATH="$CERT_PATH" docker-compose -f microservice/messaging/docker-compose.yml up -d messaging_service
                     
                     echo "✅ All services started"
                 '''
