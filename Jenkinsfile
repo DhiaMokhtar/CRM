@@ -63,9 +63,8 @@ pipeline {
             steps {
                 sh '''
                     pwd
-                    echo "certs ls"
+                    echo "certs ls before"
                     ls -l certs
-                    ls -l microservice/users/docker-compose.yml
                     echo "🧹 Cleaning up existing containers..."
                     docker-compose -f microservice/users/docker-compose.yml down -v || true
                     docker-compose -f microservice/courses/docker-compose.yml down -v || true
@@ -92,7 +91,10 @@ pipeline {
                     docker-compose -f microservice/courses/docker-compose.yml up -d courses_service
                     docker-compose -f microservice/homework/docker-compose.yml up -d homework_service
                     docker-compose -f microservice/messaging/docker-compose.yml up -d messaging_service
-                    
+                    pwd
+                    echo "CERTS_PATH is: $CERTS_PATH"
+                    echo "certs ls after"
+                    ls -l certs
                     echo "✅ All services started"
                 '''
             }
