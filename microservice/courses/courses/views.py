@@ -7,6 +7,8 @@ import os
 import logging
 import requests
 from django.conf import settings
+from urllib.parse import urlparse
+from rest_framework.decorators import api_view
 
 logger = logging.getLogger(__name__)
 
@@ -356,3 +358,64 @@ class StudentCoursesView(APIView):
                 continue
         logger.warning(f"[_get_student_classroom] all attempts failed for student {student_id}")
         return None
+
+try:
+    import PyPDF2
+except ImportError:
+    PyPDF2 = None
+
+@api_view(['POST'])
+def extract_pdf_content(request):
+    """
+    POST { "pdf_url": "https://localhost:8002/fileCourses/example.pdf" }
+    Returns: { "content": "extracted text ..." }
+    """
+    if not PyPDF2:
+        return Response({"error": "PyPDF2 not installed"}, status=500)
+
+    pdf_url = request.data.get('pdf_url')
+    if not pdf_url:
+        return Response({"error": "pdf_url is required"}, status=400)
+
+    # Normalize to path
+    parsed_path = urlparse(pdf_url).path  # /fileCourses/xxx.pdf
+    # Prevent path traversal
+    if '..' in parsed_path:
+        return Response({"error": "invalid path"}, status=400)
+
+    # If your Course.pdf FileField stores paths like /fileCourses/..., ensure MEDIA_ROOT join
+    # Try MEDIA_ROOT first
+    candidate_path = os.path.join(settings.MEDIA_ROOT, os.path.relpath(parsed_path.lstrip('/'), settings.MEDIA_URL.lstrip('/'))) \
+        if getattr(settings, 'MEDIA_URL', None) and parsed_path.startswith(settings.MEDIA_URL) else None
+
+    paths_to_try = []
+    if candidate_path:
+        paths_to_try.append(candidate_path)
+
+    # Fallback: relative to project base (if files served directly)
+    paths_to_try.append(os.path.join(settings.BASE_DIR, parsed_path.lstrip('/')))
+
+    pdf_fs_path = next((p for p in paths_to_try if os.path.isfile(p)), None)
+    if not pdf_fs_path:
+        return Response({"error": f"PDF not found"}, status=404)
+
+    try:
+        text_chunks = []
+        with open(pdf_fs_path, 'rb') as fh:
+            reader = PyPDF2.PdfReader(fh)
+            for page in reader.pages:
+                try:
+                    txt = page.extract_text() or ''
+                except Exception:
+                    txt = ''
+                text_chunks.append(txt)
+        full_text = "\n".join(text_chunks).strip()
+        if not full_text:
+            full_text = "No extractable text (possibly scanned images)."
+        # Optional truncate safeguard
+        max_chars = 20000
+        if len(full_text) > max_chars:
+            full_text = full_text[:max_chars] + "\n...[TRUNCATED]..."
+        return Response({"content": full_text})
+    except Exception as e:
+        return Response({"error": f"failed to read pdf: {e}"}, status=500)

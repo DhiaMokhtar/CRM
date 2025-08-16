@@ -10,6 +10,8 @@ import { Router } from '@angular/router';
 import { MessagingService } from '../services/messaging.service';
 import { trigger, state, style, transition, animate } from '@angular/animations';
 import { ApiService } from '../api.service';
+import { forkJoin, of } from 'rxjs';
+import { map, catchError } from 'rxjs/operators';
 
 // Add interface at the top of the file
 interface Notification {
@@ -74,6 +76,12 @@ export class StudentComponent implements OnInit {
   isChatLoading: boolean = false;
   showChat: boolean = false;
   private chatApiUrl = 'http://localhost:1234/v1/chat/completions/'; // Replace with your actual API endpoint
+
+  // Update PDF context properties
+  private pdfContext: string = '';
+  private pdfContextLoading = false;
+  private pdfContextReady = false;
+  private pdfContextMaxChars = 15000; // safeguard to avoid overly large prompt
 
   constructor(
     private fb: FormBuilder,
@@ -238,6 +246,8 @@ submitHomework(homework: Homework) {
       this.apiService.getStudentCourses(parseInt(this.userId)).subscribe({
         next: (response: any) => {
           this.lessons = response;
+          // After lessons load, build the PDF context
+          this.buildPdfContext();
         },
         error: (error) => {
           console.error('Error loading courses:', error);
@@ -335,42 +345,47 @@ toggleNotifications() {
       return;
     }
 
+    if (!this.pdfContextReady) {
+      this.addChatMessage('Course materials still loading. Please wait a moment and retry.', false);
+      return;
+    }
+
     // Add user message
     this.addChatMessage(this.currentChatMessage, true);
     const userMessage = this.currentChatMessage;
     this.currentChatMessage = '';
 
-    // Add loading message
+    // Loading placeholder
     const loadingMessage = this.addChatMessage('Thinking...', false, true);
     this.isChatLoading = true;
 
-    // Prepare API payload
+    // Build prompt exactly as requested
+    const prompt =
+`Answer the question based only on the following course material:
+
+${this.pdfContext || '[No course material available]'}
+
+Question: ${userMessage}`;
+
     const payload = {
-      "model": "deepseek/deepseek-r1-0528-qwen3-8b",
-      "messages": [
-        {"role": "system", "content": "You are a helpful assistant."},
-        {"role": "user", "content": userMessage}
+      model: 'deepseek-chat',
+      messages: [
+        { role: 'system', content: 'You are a course assistant.' },
+        { role: 'user', content: prompt }
       ]
     };
 
-    // Send to API
     this.http.post<any>(this.chatApiUrl, payload).subscribe({
       next: (response) => {
         this.isChatLoading = false;
-        // Remove loading message
         this.removeChatMessage(loadingMessage.id);
-        
-        // Add AI response
         const aiResponse = this.extractChatResponse(response);
         this.addChatMessage(aiResponse, false);
       },
       error: (error) => {
         this.isChatLoading = false;
-        // Remove loading message
         this.removeChatMessage(loadingMessage.id);
-        
-        // Add error message
-        this.addChatMessage('Sorry, I encountered an error. Please try again.', false);
+        this.addChatMessage('Error contacting AI service.', false);
         console.error('Chat error:', error);
       }
     });
@@ -411,6 +426,81 @@ toggleNotifications() {
   clearChat(): void {
     this.chatMessages = [];
     this.addChatMessage('Hello! I\'m here to help you with your studies. Feel free to ask me anything!', false);
+  }
+
+  /**
+   * Collect all PDF URLs from loaded lessons
+   */
+  private collectCoursePdfUrls(): string[] {
+    const urls: string[] = [];
+    this.lessons.forEach((lesson: any) => {
+      (lesson.chapters || []).forEach((chapter: any) => {
+        (chapter.courses || []).forEach((course: any) => {
+          if (course.pdf) {
+            // course.pdf is a relative path like /fileCourses/xyz.pdf
+            const full = `https://localhost:8002${course.pdf}`;
+            if (!urls.includes(full)) urls.push(full);
+          }
+        });
+      });
+    });
+    return urls;
+  }
+
+  /**
+   * Build a single concatenated PDF text context (truncated if necessary)
+   */
+  private buildPdfContext(): void {
+    const pdfUrls = this.collectCoursePdfUrls();
+    if (pdfUrls.length === 0) {
+      this.pdfContext = '';
+      this.pdfContextReady = true;
+      return;
+    }
+
+    this.pdfContextLoading = true;
+
+    const requests = pdfUrls.map(url =>
+      this.http.post<{ content: string }>(
+        'https://localhost:8002/api/extract-pdf-content/',
+        { pdf_url: url },
+        { withCredentials: true }
+      ).pipe(
+        map(res => ({ url, content: res.content || '' })),
+        catchError(err => {
+          console.warn('PDF extract failed for', url, err);
+            return of({ url, content: '[Content unavailable]' });
+        })
+      )
+    );
+
+    forkJoin(requests).subscribe({
+      next: results => {
+        // Concatenate with simple headers
+        let combined = '';
+        for (const r of results) {
+          const header = `\n===== SOURCE: ${r.url.split('/').pop()} =====\n`;
+          if ((combined + header + r.content).length > this.pdfContextMaxChars) {
+            const remaining = this.pdfContextMaxChars - combined.length - header.length - 20;
+            if (remaining > 0) {
+              combined += header + r.content.slice(0, remaining) + '\n...[TRUNCATED]...\n';
+            }
+            break;
+          } else {
+            combined += header + r.content;
+          }
+        }
+        this.pdfContext = combined.trim();
+        this.pdfContextReady = true;
+        this.pdfContextLoading = false;
+      },
+      error: err => {
+        console.error('Failed building PDF context', err);
+        this.pdfContext = '';
+        this.pdfContextReady = true;
+        this.pdfContextLoading = false;
+      }
+    });
   }
 }
 
