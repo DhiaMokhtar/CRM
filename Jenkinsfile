@@ -18,16 +18,15 @@ pipeline {
             steps {
                 sh '''
                     mkdir -p certs
-                    # Copy both certificate files
-                    cp localhost.pem certs/ || true
-                    cp localhost-key.pem certs/ || true
-                    
-                    # Set proper permissions
-                    chmod 644 certs/localhost.pem || true
-                    chmod 600 certs/localhost-key.pem || true
-                    
-                    echo "SSL certificates prepared:"
+                    # Ensure certs exist (if already in certs/ do NOT copy duplicates silently)
+                    if [ -f localhost.pem ] && [ -f localhost-key.pem ]; then
+                      cp -n localhost.pem certs/ || true
+                      cp -n localhost-key.pem certs/ || true
+                    fi
+                    echo "Listing root certs dir:"
                     ls -la certs/
+                    test -s certs/localhost.pem
+                    test -s certs/localhost-key.pem
                 '''
             }
         }
