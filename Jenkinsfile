@@ -66,13 +66,12 @@ pipeline {
                     echo "certs ls before"
                     ls -l certs
                     echo "🧹 Cleaning up existing containers..."
-                    docker-compose -f microservice/users/docker-compose.yml down -v || true
-                    docker-compose -f microservice/courses/docker-compose.yml down -v || true
-                    docker-compose -f microservice/homework/docker-compose.yml down -v || true
-                    docker-compose -f microservice/messaging/docker-compose.yml down -v || true
+                    docker-compose -f microservice/users/docker-compose.yml down || true
+                    docker-compose -f microservice/courses/docker-compose.yml down || true
+                    docker-compose -f microservice/homework/docker-compose.yml down || true
+                    docker-compose -f microservice/messaging/docker-compose.yml down || true
                     
-                    
-                    
+                   
                     docker network rm crm_network || true
                     docker network create crm_network
                     
@@ -122,7 +121,6 @@ pipeline {
     post {
         always {
             echo 'Pipeline completed.'
-            
         }
         success {
             echo '✅ CRM pipeline succeeded!'
