@@ -71,7 +71,8 @@ pipeline {
                     docker-compose -f microservice/homework/docker-compose.yml down -v || true
                     docker-compose -f microservice/messaging/docker-compose.yml down -v || true
                     
-                    docker container prune -f
+                    
+                    
                     docker network rm crm_network || true
                     docker network create crm_network
                     
@@ -121,7 +122,7 @@ pipeline {
     post {
         always {
             echo 'Pipeline completed.'
-            sh 'docker system prune -f'
+            
         }
         success {
             echo '✅ CRM pipeline succeeded!'
