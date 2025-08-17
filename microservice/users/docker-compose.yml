@@ -38,7 +38,7 @@ services:
       mysql_users:
         condition: service_healthy
     volumes:
-      - ${CERTS_PATH}:/certs-in:ro
+      - ${CERTS_PATH}/certs:/certs-in:ro
     ports:
       - "8001:8000"
     networks:

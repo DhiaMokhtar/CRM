@@ -4,7 +4,7 @@ pipeline {
     environment {
         DOCKER_BUILDKIT = '1'
         COMPOSE_DOCKER_CLI_BUILD = '1'
-        CERTS_PATH = "${env.WORKSPACE}/certs"
+        CERTS_PATH = "${env.WORKSPACE}"
     }
     
     stages {
