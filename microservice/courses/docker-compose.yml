@@ -37,7 +37,7 @@ services:
     ports:
       - "8002:8000"
     volumes:
-      - ../../certs:/certs-in:ro
+      - certs_volume:/certs-in
       - ./fileCourses:/app/fileCourses
       - ./media:/app/media
     networks:
@@ -46,6 +46,8 @@ services:
 
 volumes:
   mysql_courses_data:
+  certs_volume:
+    name: certs_volume
 
 networks:
   crm_network:
