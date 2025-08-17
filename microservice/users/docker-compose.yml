@@ -38,7 +38,8 @@ services:
       mysql_users:
         condition: service_healthy
     volumes:
-      - ${CERTS_PATH}/certs:/certs-in:ro
+      - /var/jenkins_home/workspace/crm_Pipeline/certs:/certs-in:ro
+
     ports:
       - "8001:8000"
     networks:
