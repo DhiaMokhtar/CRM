@@ -48,6 +48,7 @@ services:
 
 volumes:
   mysql_users_data:
+  certs_volume:
 
 networks:
   crm_network:
