@@ -35,7 +35,7 @@ services:
       - "8004:8000"
     volumes:
       - ./media:/app/media
-      - ../../certs:/certs-in:ro
+      - certs_volume:/certs-in
     depends_on:
       mysql_homework:
         condition: service_healthy
@@ -45,6 +45,8 @@ services:
 
 volumes:
   mysql_homework_data:
+  certs_volume:
+    name: certs_volume
 
 networks:
   crm_network:

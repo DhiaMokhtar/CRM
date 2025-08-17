@@ -38,13 +38,15 @@ services:
       - "8003:8000"
     volumes:
       - ./media:/app/media
-      - ../../certs:/certs-in:ro
+      - certs_volume:/certs-in
     networks:
       - crm_network
     restart: unless-stopped
 
 volumes:
   mysql_messaging_data:
+  certs_volume:
+    name: certs_volume
 
 networks:
   crm_network:

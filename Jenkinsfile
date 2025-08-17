@@ -72,7 +72,6 @@ pipeline {
                     docker-compose -f microservice/messaging/docker-compose.yml down -v || true
                     
                     docker container prune -f
-                    docker volume prune -f
                     docker network rm crm_network || true
                     docker network create crm_network
                     
