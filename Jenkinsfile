@@ -22,13 +22,14 @@ pipeline {
                     
                     # Create the Docker volume if it doesn't exist
                     docker volume create certs_volume || true
-                    
+                    echo "pathPwd ${PWD}"
+                    ls -la "${PWD}"
                     # Create a temporary container to copy files to the volume
-                    docker run --rm -v certs_volume:/certs -v "${WORKSPACE}":/workspace alpine sh -c "
+                    docker run --rm -v certs_volume:/certs -v "${PWD}" alpine sh -c "
                         if [ ! -f /certs/localhost.pem ] || [ ! -f /certs/localhost-key.pem ]; then
                             echo 'Copying SSL certificates to volume...'
-                            cp /workspace/localhost.pem /certs/ 2>/dev/null || echo 'localhost.pem not found in root directory'
-                            cp /workspace/localhost-key.pem /certs/ 2>/dev/null || echo 'localhost-key.pem not found in root directory'
+                            cp "${PWD}":/localhost.pem /certs/ 2>/dev/null || echo 'localhost.pem not found in root directory'
+                            cp "${PWD}":/localhost-key.pem /certs/ 2>/dev/null || echo 'localhost-key.pem not found in root directory'
                             chmod 600 /certs/localhost.pem /certs/localhost-key.pem 2>/dev/null || true
                         else
                             echo 'SSL certificates already exist in volume'
