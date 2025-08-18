@@ -20,13 +20,24 @@ pipeline {
                 sh '''
                     set -e
                     mkdir -p certs
-                    if [ ! -f certs/localhost.pem ] || [ ! -f certs/localhost-key.pem ]; then
-                        cp localhost.pem certs/ || true
-                        cp localhost-key.pem certs/ || true
+                    
+                    # Copy certificates to certs directory if they don't exist
+                    if [ ! -f certs/localhost.pem ]; then
+                        cp localhost.pem certs/ || { echo "localhost.pem not found in workspace root"; exit 1; }
                     fi
+                    if [ ! -f certs/localhost-key.pem ]; then
+                        cp localhost-key.pem certs/ || { echo "localhost-key.pem not found in workspace root"; exit 1; }
+                    fi
+                    
                     chmod 600 certs/localhost.pem certs/localhost-key.pem
                     pwd
                     ls -l certs
+                    
+                    # Verify files exist before proceeding
+                    if [ ! -f certs/localhost.pem ] || [ ! -f certs/localhost-key.pem ]; then
+                        echo "Certificate files missing in certs directory"
+                        exit 1
+                    fi
                     
                     # Create the Docker volume if it doesn't exist
                     docker volume create certs_volume || true
