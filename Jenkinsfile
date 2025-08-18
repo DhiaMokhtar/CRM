@@ -19,23 +19,10 @@ pipeline {
             steps {
                 sh '''
                     set -e
-                    mkdir -p certs
                     
-                    # Copy certificates to certs directory if they don't exist
-                    if [ ! -f certs/localhost.pem ]; then
-                        cp localhost.pem certs/ || { echo "localhost.pem not found in workspace root"; exit 1; }
-                    fi
-                    if [ ! -f certs/localhost-key.pem ]; then
-                        cp localhost-key.pem certs/ || { echo "localhost-key.pem not found in workspace root"; exit 1; }
-                    fi
-                    
-                    chmod 600 certs/localhost.pem certs/localhost-key.pem
-                    pwd
-                    ls -l certs
-                    
-                    # Verify files exist before proceeding
-                    if [ ! -f certs/localhost.pem ] || [ ! -f certs/localhost-key.pem ]; then
-                        echo "Certificate files missing in certs directory"
+                    # Verify certificates exist in workspace root
+                    if [ ! -f localhost.pem ] || [ ! -f localhost-key.pem ]; then
+                        echo "Certificate files missing in workspace root"
                         exit 1
                     fi
                     
@@ -44,15 +31,15 @@ pipeline {
                     
                     # Debug: Check current directory and files
                     echo "Current directory: $(pwd)"
-                    echo "Contents of certs directory:"
-                    ls -la certs/
+                    echo "Contents of workspace root:"
+                    ls -la localhost*.pem
                     
-                    # Create a temporary container to copy certificates to the volume
-                    docker run --rm -v certs_volume:/certs-volume -v "$(pwd)/certs":/host-certs alpine sh -c "
-                        echo 'Contents of /host-certs:' &&
-                        ls -la /host-certs/ &&
-                        cp /host-certs/localhost.pem /certs-volume/ &&
-                        cp /host-certs/localhost-key.pem /certs-volume/ &&
+                    # Create a temporary container to copy certificates directly to the volume
+                    docker run --rm -v certs_volume:/certs-volume -v "$(pwd)":/host-workspace alpine sh -c "
+                        echo 'Contents of /host-workspace (looking for localhost*.pem):' &&
+                        ls -la /host-workspace/localhost*.pem &&
+                        cp /host-workspace/localhost.pem /certs-volume/ &&
+                        cp /host-workspace/localhost-key.pem /certs-volume/ &&
                         chmod 600 /certs-volume/localhost.pem /certs-volume/localhost-key.pem &&
                         echo 'Contents of /certs-volume after copy:' &&
                         ls -la /certs-volume/
