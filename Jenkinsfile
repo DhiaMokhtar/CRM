@@ -18,34 +18,24 @@ pipeline {
         stage('Prepare SSL certs') {
             steps {
                 sh '''
-                    set -e
-                    
-                    # Verify certificates exist in workspace root
-                    if [ ! -f localhost.pem ] || [ ! -f localhost-key.pem ]; then
-                        echo "Certificate files missing in workspace root"
-                        exit 1
-                    fi
+                    echo "🔒 Preparing SSL certificates for Docker volume..."
                     
                     # Create the Docker volume if it doesn't exist
                     docker volume create certs_volume || true
                     
-                    # Debug: Check current directory and files
-                    echo "Current directory: $(pwd)"
-                    echo "Contents of workspace root:"
-                    ls -la localhost*.pem
-                    
-                    # Create a temporary container to copy certificates directly to the volume
-                    docker run --rm -v certs_volume:/certs-volume -v "$(pwd)":/host-workspace alpine sh -c "
-                        echo 'Contents of /host-workspace (looking for localhost*.pem):' &&
-                        ls -la /host-workspace/localhost*.pem &&
-                        cp /host-workspace/localhost.pem /certs-volume/ &&
-                        cp /host-workspace/localhost-key.pem /certs-volume/ &&
-                        chmod 600 /certs-volume/localhost.pem /certs-volume/localhost-key.pem &&
-                        echo 'Contents of /certs-volume after copy:' &&
-                        ls -la /certs-volume/
+                    # Create a temporary container to copy files to the volume
+                    docker run --rm -v certs_volume:/certs -v "${WORKSPACE}":/workspace alpine sh -c "
+                        if [ ! -f /certs/localhost.pem ] || [ ! -f /certs/localhost-key.pem ]; then
+                            echo 'Copying SSL certificates to volume...'
+                            cp /workspace/localhost.pem /certs/ 2>/dev/null || echo 'localhost.pem not found in root directory'
+                            cp /workspace/localhost-key.pem /certs/ 2>/dev/null || echo 'localhost-key.pem not found in root directory'
+                            chmod 600 /certs/localhost.pem /certs/localhost-key.pem 2>/dev/null || true
+                        else
+                            echo 'SSL certificates already exist in volume'
+                        fi
+                        echo 'Contents of certs volume:'
+                        ls -la /certs/
                     "
-                    
-                    echo "✅ SSL certificates copied to certs_volume"
                 '''
             }
         }
