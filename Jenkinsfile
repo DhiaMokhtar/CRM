@@ -42,11 +42,19 @@ pipeline {
                     # Create the Docker volume if it doesn't exist
                     docker volume create certs_volume || true
                     
+                    # Debug: Check current directory and files
+                    echo "Current directory: $(pwd)"
+                    echo "Contents of certs directory:"
+                    ls -la certs/
+                    
                     # Create a temporary container to copy certificates to the volume
-                    docker run --rm -v certs_volume:/certs-volume -v $(pwd)/certs:/host-certs alpine sh -c "
+                    docker run --rm -v certs_volume:/certs-volume -v "$(pwd)/certs":/host-certs alpine sh -c "
+                        echo 'Contents of /host-certs:' &&
+                        ls -la /host-certs/ &&
                         cp /host-certs/localhost.pem /certs-volume/ &&
                         cp /host-certs/localhost-key.pem /certs-volume/ &&
                         chmod 600 /certs-volume/localhost.pem /certs-volume/localhost-key.pem &&
+                        echo 'Contents of /certs-volume after copy:' &&
                         ls -la /certs-volume/
                     "
                     
