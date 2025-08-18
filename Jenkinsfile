@@ -18,6 +18,7 @@ pipeline {
         stage('Prepare SSL certs') {
             steps {
                 sh '''
+                    set -e
                     mkdir -p certs
                     if [ ! -f certs/localhost.pem ] || [ ! -f certs/localhost-key.pem ]; then
                         cp localhost.pem certs/ || true
@@ -26,6 +27,19 @@ pipeline {
                     chmod 600 certs/localhost.pem certs/localhost-key.pem
                     pwd
                     ls -l certs
+                    
+                    # Create the Docker volume if it doesn't exist
+                    docker volume create certs_volume || true
+                    
+                    # Create a temporary container to copy certificates to the volume
+                    docker run --rm -v certs_volume:/certs-volume -v $(pwd)/certs:/host-certs alpine sh -c "
+                        cp /host-certs/localhost.pem /certs-volume/ &&
+                        cp /host-certs/localhost-key.pem /certs-volume/ &&
+                        chmod 600 /certs-volume/localhost.pem /certs-volume/localhost-key.pem &&
+                        ls -la /certs-volume/
+                    "
+                    
+                    echo "✅ SSL certificates copied to certs_volume"
                 '''
             }
         }

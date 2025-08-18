@@ -297,11 +297,11 @@ export class ApiService {
   }
 
   getSchedulesMonthly(year: string, month: string): Observable<any> {
-    return this.http.get<any>(`${this.homeworkServiceUrl}/schedules/monthly_view/?year=${year}&month=${month}`, { withCredentials: true });
+    return this.http.get<any>(`${this.homeworkServiceUrl}/schedule-views/monthly/?year=${year}&month=${month}`, { withCredentials: true });
   }
 
   getSchedulesWeekly(weekStart: string): Observable<any> {
-    return this.http.get<any>(`${this.homeworkServiceUrl}/schedules/weekly_view/?week_start=${weekStart}`, { withCredentials: true });
+    return this.http.get<any>(`${this.homeworkServiceUrl}/schedule-views/weekly/?week_start=${weekStart}`, { withCredentials: true });
   }
 
   createSchedule(schedule: any): Observable<any> {
