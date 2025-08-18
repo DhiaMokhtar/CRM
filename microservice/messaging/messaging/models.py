@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.models import AbstractUser
 
 # Create your models here.
 
@@ -49,3 +50,39 @@ class Conversation(models.Model):
     
     def __str__(self):
         return f"Conversation: {self.participant1_type}({self.participant1_id}) <-> {self.participant2_type}({self.participant2_id})"
+
+class Notification(models.Model):
+    NOTIFICATION_TYPES = [
+        ('course_material', 'Course Material'),
+        ('homework', 'Homework'),
+        ('announcement', 'Announcement'),
+        ('grade', 'Grade'),
+    ]
+    
+    title = models.CharField(max_length=200)
+    message = models.TextField()
+    notification_type = models.CharField(max_length=20, choices=NOTIFICATION_TYPES, default='announcement')
+    classroom_id = models.IntegerField()
+    teacher_id = models.IntegerField()
+    student_id = models.IntegerField(null=True, blank=True)
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.title} - {self.notification_type}"
+
+class StudentNotification(models.Model):
+    """Junction table to track which students have read which notifications"""
+    notification = models.ForeignKey(Notification, on_delete=models.CASCADE)
+    student_id = models.IntegerField()
+    is_read = models.BooleanField(default=False)
+    read_at = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        unique_together = ['notification', 'student_id']
+    
+    def __str__(self):
+        return f"Student {self.student_id} - {self.notification.title}"

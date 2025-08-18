@@ -294,7 +294,61 @@ export class TeacherComponent implements OnInit {
       chapter.selectedFile = file;
     }
   }
+  private createContentNotification(chapter: Chapter, materialTitle: string) {
+    if (this.selectedClass) {
+      console.log('Creating notification for class:', this.selectedClass.id);
+      console.log('Teacher ID:', this.userId);
+      
+      const notificationData = {
+        title: 'New Course Material Added',
+        message: `New material "${materialTitle}" has been added to ${chapter.title}`,
+        classroom_id: this.selectedClass.id,
+        teacher_id: parseInt(this.userId!),
+        notification_type: 'course_material'
+      };
 
+      console.log('Notification data being sent:', notificationData);
+
+      // Send to messaging microservice with proper authentication
+      this.http.post('https://localhost:8003/api/notifications/', notificationData, 
+        { withCredentials: true })
+        .subscribe({
+          next: (response) => {
+            console.log('Notification created successfully:', response);
+          },
+          error: (error) => {
+            console.error('Error creating notification:', error);
+            console.error('Error details:', error.error);
+          }
+        });
+    }
+  }
+
+  private createHomeworkNotification(homeworkTitle: string) {
+    if (this.selectedClass) {
+      const notificationData = {
+        title: 'New Homework Assignment',
+        message: `New homework "${homeworkTitle}" has been assigned`,
+        classroom_id: this.selectedClass.id,
+        teacher_id: parseInt(this.userId!),
+        notification_type: 'homework'
+      };
+
+      console.log('Homework notification data:', notificationData);
+
+      this.http.post('https://localhost:8003/api/notifications/', notificationData, 
+        { withCredentials: true })
+        .subscribe({
+          next: (response) => {
+            console.log('Homework notification created successfully:', response);
+          },
+          error: (error) => {
+            console.error('Error creating homework notification:', error);
+            console.error('Error details:', error.error);
+          }
+        });
+    }
+  }
   // Update uploadContent method
   uploadContent(chapter: Chapter) {
     if (chapter.selectedFile) {
@@ -302,21 +356,16 @@ export class TeacherComponent implements OnInit {
       const cleanedTitle = chapter.selectedFile.name.replace(/\s+/g,' ').trim();
       formData.append('title', cleanedTitle);
       formData.append('chapter', String(chapter.id));
-      // use backend expected field name
       formData.append('pdf_file', chapter.selectedFile);
-      console.log('[uploadContent] FormData keys:', Array.from(formData.keys()));
-      console.log('[uploadContent] Chapter ID:', chapter.id);
-      console.log('[uploadContent] File:', {
-        name: chapter.selectedFile.name,
-        size: chapter.selectedFile.size,
-        type: chapter.selectedFile.type
-      });
 
       this.apiService.createCourseMaterial(formData).subscribe({
-        next: () => {
+        next: (newMaterial) => {
           this.loadCourseMaterials(chapter);
           chapter.isAddingContent = false;
           delete chapter.selectedFile;
+          
+          // Create notification for students in this class
+          this.createContentNotification(chapter, cleanedTitle);
         },
         error: (error) => {
           console.error('[uploadContent] Raw error object:', error);
@@ -418,12 +467,10 @@ export class TeacherComponent implements OnInit {
   viewSubmission(fileUrl: string) {
     window.open(fileUrl, '_blank');
   }
-  
   // Add method to add a new homework
   addHomework() {
     if (this.homeworkForm.valid && this.selectedClass && this.userId) {
       const rawDue = this.homeworkForm.value.due_date;
-      // Ensure ISO format with seconds for backend robustness
       const dueIso = rawDue && rawDue.length === 16 ? rawDue + ':00' : rawDue;
 
       const homeworkData = {
@@ -431,17 +478,17 @@ export class TeacherComponent implements OnInit {
         description: this.homeworkForm.value.description.trim(),
         due_date: dueIso,
         classroom_id: this.selectedClass.id,
-        teacher_id: parseInt(this.userId, 10)  // ensure integer
+        teacher_id: parseInt(this.userId, 10)
       };
-
-      console.log('[addHomework] Payload:', homeworkData);
 
       this.apiService.createHomework(homeworkData).subscribe({
         next: (response: any) => {
-          console.log('[addHomework] Success:', response);
           this.loadClassHomework(this.selectedClass.id);
           this.homeworkForm.reset();
           this.showAddHomeworkForm = false;
+          
+          // Create notification for homework
+          this.createHomeworkNotification(homeworkData.title);
         },
         error: (error) => {
           console.error('[addHomework] Error object:', error);
@@ -451,8 +498,6 @@ export class TeacherComponent implements OnInit {
           alert('Failed to add homework: ' + detail);
         }
       });
-    } else {
-      alert('Form invalid or class not selected');
     }
   }
   
@@ -592,23 +637,28 @@ selectClassForGrading(classItem: any) {
   
   addSubject() {
   if (!this.newSubjectName.trim() || !this.selectedClassForGrading) {
-  return;
+    return;
   }
   
-  const subject = {
-  name: this.newSubjectName,
-  classroom: this.selectedClassForGrading.id
+  const subject: Partial<Subject> = {
+    name: this.newSubjectName.trim(),
+    classroom_id: this.selectedClassForGrading.id,  // Use classroom_id instead of classroom
+    teacher_id: parseInt(this.userId!)  // Add teacher_id from current user
   };
   
   this.apiService.createSubject(subject).subscribe({
-  next: () => {
-  this.newSubjectName = '';
-  this.showAddSubjectForm = false;
-  this.loadGradeTable(this.selectedClassForGrading!.id);
-  },
-  error: (error) => {
-  console.error('Failed to add subject:', error);
-  }
+    next: () => {
+      this.newSubjectName = '';
+      this.showAddSubjectForm = false;
+      this.loadGradeTable(this.selectedClassForGrading!.id);
+    },
+    error: (error) => {
+      console.error('Failed to add subject:', error);
+      // Add more detailed error logging
+      if (error.error) {
+        console.error('Backend error:', error.error);
+      }
+    }
   });
   }
   
@@ -622,25 +672,31 @@ selectClassForGrading(classItem: any) {
   const score = this.editingGrades[key];
   
   if (score === undefined || score < 0 || score > 20) {
-  alert('Please enter a valid grade between 0 and 20');
-  return;
+    alert('Please enter a valid grade between 0 and 20');
+    return;
   }
   
   const grade: Partial<Grade> = {
-  student: studentId,
-  subject: subjectId,
-  score: score,
-  grade_type: 'exam'
+    student_id: studentId,  // Use student_id instead of student
+    subject: subjectId,
+    score: score,
+    max_score: 20,
+    grade_type: 'exam',
+    recorded_by_id: parseInt(this.userId!)  // Add recorded_by_id and use teacher ID
   };
   
   this.apiService.createGrade(grade).subscribe({
-  next: (newGrade) => {
-  delete this.editingGrades[key];
-  this.loadGradeTable(this.selectedClassForGrading!.id);
-  },
-  error: (error) => {
-  console.error('Failed to save grade:', error);
-  }
+    next: (newGrade) => {
+      delete this.editingGrades[key];
+      this.loadGradeTable(this.selectedClassForGrading!.id);
+    },
+    error: (error) => {
+      console.error('Failed to save grade:', error);
+      // Add more detailed error logging
+      if (error.error) {
+        console.error('Backend error:', error.error);
+      }
+    }
   });
   }
   

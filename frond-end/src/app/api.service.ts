@@ -181,6 +181,17 @@ export interface GradeTable {
   grades: { [studentId: number]: { [subjectId: number]: Grade[] } };
 }
 
+export interface Notification {
+  id: number;
+  title: string;
+  message: string;
+  notification_type: string;
+  is_read: boolean;
+  created_at: string;
+  teacher_id: number;
+  classroom_id: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -486,6 +497,20 @@ export class ApiService {
       teacher_id: teacherId
     };
     return this.http.post<any>(`${this.homeworkServiceUrl}/comments/bulk/`, data, { withCredentials: true });
+  }
+
+  // Notification methods
+  getStudentNotifications(studentId: number): Observable<Notification[]> {
+    return this.http.get<Notification[]>(`${this.messagingServiceUrl}/notifications/?student_id=${studentId}`, { withCredentials: true });
+  }
+  
+  markNotificationAsRead(notificationId: number, studentId: number): Observable<any> {
+    return this.http.put(`${this.messagingServiceUrl}/notifications/${notificationId}/`, 
+      { is_read: true, student_id: studentId }, { withCredentials: true });
+  }
+  
+  createNotification(notification: any): Observable<any> {
+    return this.http.post(`${this.messagingServiceUrl}/notifications/`, notification, { withCredentials: true });
   }
 }
 

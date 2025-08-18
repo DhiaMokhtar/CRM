@@ -271,52 +271,43 @@ submitHomework(homework: Homework) {
 
   loadNotifications() {
     if (this.userId) {
-      this.http.get(`http://localhost:8000/api/notifications/?student_id=${this.userId}`)
+      console.log('Loading notifications for student ID:', this.userId);
+      
+      // Use messaging microservice with proper authentication
+      this.http.get(`https://localhost:8003/api/notifications/?student_id=${this.userId}`, 
+        { withCredentials: true })
         .subscribe({
           next: (response: any) => {
-            this.notifications = response;
+            console.log('Raw notifications response:', response);
+            console.log('Response type:', typeof response);
+            console.log('Is array?', Array.isArray(response));
+            
+            this.notifications = Array.isArray(response) ? response : [];
             this.unreadNotificationsCount = this.notifications.filter(n => !n.is_read).length;
+            
+            console.log('Processed notifications:', this.notifications);
+            console.log('Unread count:', this.unreadNotificationsCount);
           },
           error: (error) => {
             console.error('Error loading notifications:', error);
+            console.error('Error status:', error.status);
+            console.error('Error details:', error.error);
           }
         });
+    } else {
+      console.log('No user ID available for loading notifications');
     }
   }
 
-// Add this method to the class
-// Add this method to your StudentComponent class
-markAllAsRead() {
-  const unreadNotifications = this.notifications.filter(n => !n.is_read);
-  
-  unreadNotifications.forEach(notification => {
-    this.http.put(`http://localhost:8000/api/notifications/${notification.id}/`, {})
-      .subscribe({
-        next: () => {
-          notification.is_read = true;
-        },
-        error: (error) => {
-          console.error('Error marking notification as read:', error);
-        }
-      });
-  });
-  
-  this.unreadNotificationsCount = 0;
-}
-
-// Update the existing toggleNotifications method
-toggleNotifications() {
-  this.showNotifications = !this.showNotifications;
-  if (this.showNotifications) {
-    // Auto-refresh notifications when opened
-    this.loadNotifications();
-  }
-}
-
   markAsRead(notificationId: number) {
-    this.http.put(`http://localhost:8000/api/notifications/${notificationId}/`, {})
+    console.log('Marking notification as read:', notificationId, 'for student:', this.userId);
+    
+    this.http.put(`https://localhost:8003/api/notifications/${notificationId}/`, 
+      { is_read: true, student_id: parseInt(this.userId!) }, 
+      { withCredentials: true })
       .subscribe({
         next: () => {
+          console.log('Notification marked as read successfully');
           const notification = this.notifications.find(n => n.id === notificationId);
           if (notification) {
             notification.is_read = true;
@@ -328,6 +319,36 @@ toggleNotifications() {
         }
       });
   }
+
+  // Add this method to the class
+  markAllAsRead() {
+    const unreadNotifications = this.notifications.filter(n => !n.is_read);
+    
+    unreadNotifications.forEach(notification => {
+      this.http.put(`https://localhost:8003/api/notifications/${notification.id}/`, 
+        { is_read: true }, 
+        { withCredentials: true })  // Add withCredentials for authentication
+        .subscribe({
+          next: () => {
+            notification.is_read = true;
+          },
+          error: (error) => {
+            console.error('Error marking notification as read:', error);
+          }
+        });
+    });
+    
+    this.unreadNotificationsCount = 0;
+  }
+
+  toggleNotifications() {
+    this.showNotifications = !this.showNotifications;
+    if (this.showNotifications) {
+      // Auto-refresh notifications when opened
+      this.loadNotifications();
+    }
+  }
+
   openMessages(): void {
     this.router.navigate(['/messages']);
   }

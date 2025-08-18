@@ -6,10 +6,19 @@ from rest_framework.decorators import action
 from django.db.models import Q
 from django.db import transaction
 from django.shortcuts import get_object_or_404
-import logging
+import json
 import requests
+import logging
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+from django.utils.decorators import method_decorator
+from django.views import View
+from django.utils import timezone
+import json
+from .models import Notification, StudentNotification
 
-from .models import Message, Conversation
+from .models import Message, Conversation, Notification, StudentNotification
 from .serializers import MessageSerializer, ConversationSerializer
 
 logger = logging.getLogger(__name__)
@@ -268,3 +277,175 @@ class HealthCheckView(APIView):
             'status': 'healthy',
             'service': 'messaging'
         })
+
+@method_decorator(csrf_exempt, name='dispatch')
+class NotificationListCreateView(View):
+    def get(self, request):
+        student_id = request.GET.get('student_id')
+        print(f"[DEBUG] Getting notifications for student_id: {student_id}")
+        
+        if student_id:
+            try:
+                # Get notifications directly from StudentNotification table
+                student_notifications = StudentNotification.objects.filter(
+                    student_id=int(student_id)
+                ).select_related('notification').order_by('-notification__created_at')
+                
+                print(f"[DEBUG] Found {student_notifications.count()} student notifications")
+                
+                result = []
+                for student_notification in student_notifications:
+                    notification = student_notification.notification
+                    result.append({
+                        'id': notification.id,
+                        'title': notification.title,
+                        'message': notification.message,
+                        'notification_type': notification.notification_type,
+                        'is_read': student_notification.is_read,
+                        'created_at': notification.created_at.isoformat(),
+                        'teacher_id': notification.teacher_id,
+                        'classroom_id': notification.classroom_id,
+                        'lesson_title': '',
+                        'chapter_title': '',
+                        'course_title': notification.title
+                    })
+                
+                print(f"[DEBUG] Returning {len(result)} notifications")
+                return JsonResponse(result, safe=False)
+                
+            except Exception as e:
+                print(f"[DEBUG] Error getting student notifications: {e}")
+                return JsonResponse([], safe=False)
+        
+        print(f"[DEBUG] No student_id provided")
+        return JsonResponse([], safe=False)
+    
+    def post(self, request):
+        try:
+            data = json.loads(request.body)
+            print(f"[DEBUG] Received notification data: {data}")
+            
+            # Validate required fields
+            required_fields = ['title', 'message', 'classroom_id', 'teacher_id']
+            for field in required_fields:
+                if field not in data:
+                    print(f"[DEBUG] Missing required field: {field}")
+                    return JsonResponse({'error': f'Missing required field: {field}'}, status=400)
+            
+            # Create notification
+            notification = Notification.objects.create(
+                title=data['title'],
+                message=data['message'],
+                notification_type=data.get('notification_type', 'announcement'),
+                classroom_id=data['classroom_id'],
+                teacher_id=data['teacher_id']
+            )
+            
+            print(f"[DEBUG] Notification created successfully: {notification.id}")
+            
+            # Now create StudentNotification entries for all students in this classroom
+            classroom_id = data['classroom_id']
+            try:
+                # Get all students in this classroom from users microservice
+                headers = {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                }
+                
+                # Try multiple URLs to get students
+                urls_to_try = [
+                    f'http://users_service:8000/api/classrooms/{classroom_id}/students/',
+                    f'https://users_service:8000/api/classrooms/{classroom_id}/students/',
+                    f'https://localhost:8001/api/classrooms/{classroom_id}/students/',
+                ]
+                
+                students_response = None
+                for url in urls_to_try:
+                    try:
+                        print(f"[DEBUG] Trying to get students from: {url}")
+                        students_response = requests.get(url, headers=headers, verify=False, timeout=5)
+                        if students_response.status_code == 200:
+                            print(f"[DEBUG] Successfully got students from: {url}")
+                            break
+                    except Exception as e:
+                        print(f"[DEBUG] Failed to get students from {url}: {e}")
+                        continue
+                        
+                if students_response and students_response.status_code == 200:
+                    students_data = students_response.json()
+                    print(f"[DEBUG] Students data: {students_data}")
+                    
+                    # Create StudentNotification for each student
+                    student_notifications_created = 0
+                    for student in students_data:
+                        student_id = student.get('id')
+                        if student_id:
+                            student_notification, created = StudentNotification.objects.get_or_create(
+                                notification=notification,
+                                student_id=student_id,
+                                defaults={'is_read': False}
+                            )
+                            if created:
+                                student_notifications_created += 1
+                                print(f"[DEBUG] Created StudentNotification for student {student_id}")
+                    
+                    print(f"[DEBUG] Created {student_notifications_created} StudentNotification entries")
+                else:
+                    print(f"[DEBUG] Failed to get students for classroom {classroom_id}")
+                    
+            except Exception as e:
+                print(f"[DEBUG] Error creating StudentNotifications: {e}")
+                # Don't fail the notification creation if StudentNotification creation fails
+            
+            return JsonResponse({
+                'id': notification.id,
+                'title': notification.title,
+                'message': notification.message,
+                'created_at': notification.created_at.isoformat()
+            })
+            
+        except json.JSONDecodeError as e:
+            print(f"[DEBUG] JSON decode error: {e}")
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+        except Exception as e:
+            print(f"[DEBUG] Error creating notification: {e}")
+            return JsonResponse({'error': str(e)}, status=400)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class NotificationDetailView(View):
+    def put(self, request, notification_id):
+        try:
+            data = json.loads(request.body)
+            student_id = data.get('student_id')
+            print(f"[DEBUG] Marking notification {notification_id} as read for student {student_id}")
+            
+            if student_id:
+                # Update student notification read status
+                student_notification, created = StudentNotification.objects.get_or_create(
+                    notification_id=notification_id,
+                    student_id=int(student_id),
+                    defaults={'is_read': False}
+                )
+                student_notification.is_read = data.get('is_read', True)
+                student_notification.read_at = timezone.now()
+                student_notification.save()
+                
+                print(f"[DEBUG] Student notification updated successfully")
+                return JsonResponse({'success': True})
+            else:
+                print(f"[DEBUG] No student_id provided, updating notification itself")
+                # Update notification itself
+                notification = Notification.objects.get(id=notification_id)
+                for key, value in data.items():
+                    if key != 'student_id':  # Don't set student_id on notification
+                        setattr(notification, key, value)
+                notification.save()
+                
+                return JsonResponse({'success': True})
+                
+        except (Notification.DoesNotExist, StudentNotification.DoesNotExist) as e:
+            print(f"[DEBUG] Notification not found: {e}")
+            return JsonResponse({'error': 'Notification not found'}, status=404)
+        except Exception as e:
+            print(f"[DEBUG] Error updating notification: {e}")
+            return JsonResponse({'error': str(e)}, status=400)

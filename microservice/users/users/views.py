@@ -14,6 +14,11 @@ from .serializers import (
     AdministratorSerializer, TeacherSerializer, 
     StudentSerializer, ParentSerializer, ClassRoomSerializer
 )
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+from django.utils.decorators import method_decorator
+from django.views import View
 
 class AdministratorViewSet(viewsets.ModelViewSet):
     queryset = Administrator.objects.all()
@@ -233,3 +238,26 @@ class UserSearchView(APIView):
 class HealthCheckView(APIView):
     def get(self, request):
         return Response({'status': 'healthy'}, status=status.HTTP_200_OK)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class ClassroomStudentsView(View):
+    def get(self, request, classroom_id):
+        try:
+            # Get all students in this classroom
+            students = Student.objects.filter(class_id=classroom_id)
+            
+            students_data = []
+            for student in students:
+                students_data.append({
+                    'id': student.id,
+                    'username': student.username,
+                    'email': student.email,
+                    'class_id': student.class_id.id if student.class_id else None
+                })
+            
+            print(f"[DEBUG] Found {len(students_data)} students in classroom {classroom_id}")
+            return JsonResponse(students_data, safe=False)
+            
+        except Exception as e:
+            print(f"[DEBUG] Error getting students for classroom {classroom_id}: {e}")
+            return JsonResponse({'error': str(e)}, status=500)
