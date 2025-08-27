@@ -19,8 +19,8 @@ pipeline {
             steps {
                 sh '''
                     echo "🔒 Preparing SSL certificates for Docker volume..."
-                    
-                    # Create the Docker volume if it doesn't exist
+
+                    # Create the Docker volume if it doesn't exist mounting
                     docker volume create certs_volume || true
                     echo "pathPwd ${PWD}"
                     ls -la "${PWD}"
