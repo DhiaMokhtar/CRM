@@ -1,0 +1,258 @@
+.home-container {
+  min-height: 100vh;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+// Hero Section
+.hero-section {
+  display: flex;
+  align-items: center;
+  min-height: 80vh;
+  padding: 2rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  gap: 3rem;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    text-align: center;
+    padding: 1rem;
+  }
+}
+
+.hero-content {
+  flex: 1;
+  max-width: 600px;
+
+  .hero-title {
+    font-size: 3.5rem;
+    font-weight: bold;
+    margin-bottom: 1rem;
+    line-height: 1.2;
+
+    @media (max-width: 768px) {
+      font-size: 2.5rem;
+    }
+  }
+
+  .hero-subtitle {
+    font-size: 1.25rem;
+    margin-bottom: 2rem;
+    opacity: 0.9;
+    line-height: 1.6;
+  }
+}
+
+.hero-buttons {
+  display: flex;
+  gap: 1rem;
+  
+  @media (max-width: 480px) {
+    flex-direction: column;
+  }
+}
+
+.btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  display: inline-block;
+
+  &.btn-primary {
+    background-color: #ff6b6b;
+    color: white;
+
+    &:hover {
+      background-color: #ff5252;
+      transform: translateY(-2px);
+    }
+  }
+
+  &.btn-secondary {
+    background-color: transparent;
+    color: white;
+    border: 2px solid white;
+
+    &:hover {
+      background-color: white;
+      color: #667eea;
+      transform: translateY(-2px);
+    }
+  }
+}
+
+.hero-image {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  .hero-placeholder {
+    width: 300px;
+    height: 300px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(10px);
+
+    .icon-education {
+      font-size: 6rem;
+      opacity: 0.7;
+    }
+
+    &::before {
+      content: '🎓';
+      font-size: 6rem;
+    }
+  }
+}
+
+// Sections
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+.section-title {
+  text-align: center;
+  font-size: 2.5rem;
+  margin-bottom: 3rem;
+  color: #333;
+  font-weight: bold;
+}
+
+// Features Section
+.features-section {
+  padding: 5rem 0;
+  background-color: #f8f9fa;
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 2rem;
+}
+
+.feature-card {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  text-align: center;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+
+  &:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  }
+
+  .feature-icon {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 1.5rem;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 2rem;
+  }
+
+  h3 {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    color: #333;
+  }
+
+  p {
+    color: #666;
+    line-height: 1.6;
+  }
+}
+
+// Quick Access Section
+.quick-access-section {
+  padding: 5rem 0;
+  background: white;
+}
+
+.access-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 2rem;
+}
+
+.access-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 2rem;
+  border-radius: 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+
+  &:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+  }
+
+  .access-icon {
+    width: 70px;
+    height: 70px;
+    margin: 0 auto 1.5rem;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+  }
+
+  h3 {
+    font-size: 1.4rem;
+    margin-bottom: 1rem;
+  }
+
+  p {
+    opacity: 0.9;
+    line-height: 1.5;
+  }
+}
+
+// Footer
+.home-footer {
+  background-color: #333;
+  color: white;
+  padding: 2rem 0;
+  text-align: center;
+
+  p {
+    margin: 0;
+    opacity: 0.8;
+  }
+}
+
+// Responsive Design
+@media (max-width: 768px) {
+  .features-grid,
+  .access-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .section-title {
+    font-size: 2rem;
+  }
+
+  .container {
+    padding: 0 1rem;
+  }
+}

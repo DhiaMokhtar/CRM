@@ -16,6 +16,7 @@ import { AuthService } from './services/auth.service';
 import { AuthGuard } from './guards/auth.guard';
 import { CalendarComponent } from './calendar/calendar.component';
 import { ChatbotComponent } from './chatbot/chatbot.component';
+import { HomeComponent } from './home/home.component';
 
 @NgModule({
   declarations: [
@@ -28,7 +29,8 @@ import { ChatbotComponent } from './chatbot/chatbot.component';
     ParentComponent,
     MessagingComponent,
     CalendarComponent,
-    ChatbotComponent
+    ChatbotComponent,
+    HomeComponent
   ],
   imports: [
     BrowserModule,

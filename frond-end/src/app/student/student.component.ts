@@ -382,35 +382,35 @@ submitHomework(homework: Homework) {
 
     // Build prompt exactly as requested
     const prompt =
-`Answer the question based only on the following course material:
+  `Answer the question based only on the following course material:
 
-${this.pdfContext || '[No course material available]'}
+  ${this.pdfContext || '[No course material available]'}
 
-Question: ${userMessage}`;
+  Question: ${userMessage}`;
 
-    const payload = {
-      model: 'deepseek-chat',
-      messages: [
-        { role: 'system', content: 'You are a course assistant.' },
-        { role: 'user', content: prompt }
-      ]
-    };
-
-    this.http.post<any>(this.chatApiUrl, payload).subscribe({
-      next: (response) => {
-        this.isChatLoading = false;
-        this.removeChatMessage(loadingMessage.id);
-        const aiResponse = this.extractChatResponse(response);
-        this.addChatMessage(aiResponse, false);
-      },
-      error: (error) => {
-        this.isChatLoading = false;
-        this.removeChatMessage(loadingMessage.id);
-        this.addChatMessage('Error contacting AI service.', false);
-        console.error('Chat error:', error);
-      }
-    });
-  }
+      const payload = {
+        model: 'deepseek-chat',
+        messages: [
+          { role: 'system', content: 'You are a course assistant.' },
+          { role: 'user', content: prompt }
+        ]
+      };
+      console.log('Sending chat request with payload:', payload);
+      this.http.post<any>(this.chatApiUrl, payload).subscribe({
+        next: (response) => {
+          this.isChatLoading = false;
+          this.removeChatMessage(loadingMessage.id);
+          const aiResponse = this.extractChatResponse(response);
+          this.addChatMessage(aiResponse, false);
+        },
+        error: (error) => {
+          this.isChatLoading = false;
+          this.removeChatMessage(loadingMessage.id);
+          this.addChatMessage('Error contacting AI service.', false);
+          console.error('Chat error:', error);
+        }
+      });
+    }
 
   private addChatMessage(content: string, isUser: boolean, isLoading: boolean = false): ChatMessage {
     const message: ChatMessage = {

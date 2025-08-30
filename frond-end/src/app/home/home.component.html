@@ -1,0 +1,57 @@
+<div class="home-container">
+  <!-- Header Section -->
+  <header class="hero-section">
+    <div class="hero-content">
+      <h1 class="hero-title">Welcome to CRM System</h1>
+      <p class="hero-subtitle">Streamline your educational management with our comprehensive platform</p>
+      <div class="hero-buttons">
+        <button class="btn btn-primary" routerLink="/auth">Get Started</button>
+        <button class="btn btn-secondary" (click)="scrollToFeatures()">Learn More</button>
+      </div>
+    </div>
+    <div class="hero-image">
+      <div class="hero-placeholder">
+        <i class="icon-education"></i>
+      </div>
+    </div>
+  </header>
+
+  <!-- Features Section -->
+  <section class="features-section" #featuresSection>
+    <div class="container">
+      <h2 class="section-title">Key Features</h2>
+      <div class="features-grid">
+        <div class="feature-card" *ngFor="let feature of features">
+          <div class="feature-icon">
+            <i [class]="feature.icon"></i>
+          </div>
+          <h3>{{ feature.title }}</h3>
+          <p>{{ feature.description }}</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Quick Access Section -->
+  <section class="quick-access-section">
+    <div class="container">
+      <h2 class="section-title">Quick Access</h2>
+      <div class="access-grid">
+        <div class="access-card" *ngFor="let role of roles" (click)="navigateToRole(role.route)">
+          <div class="access-icon">
+            <i [class]="role.icon"></i>
+          </div>
+          <h3>{{ role.title }}</h3>
+          <p>{{ role.description }}</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="home-footer">
+    <div class="container">
+      <p>&copy; 2024 CRM System. All rights reserved.</p>
+    </div>
+  </footer>
+</div>

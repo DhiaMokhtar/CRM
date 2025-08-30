@@ -7,10 +7,12 @@ import { TeacherComponent } from './teacher/teacher.component';
 import { ParentComponent } from './parent/parent.component';
 import { MessagingComponent } from './messaging/messaging.component';
 import { CalendarComponent } from './calendar/calendar.component';
+import { HomeComponent } from './home/home.component';
 import { AuthGuard } from './guards/auth.guard';
 
 const routes: Routes = [
-  { path: '', redirectTo: 'auth', pathMatch: 'full'},
+  { path: '', redirectTo: 'home', pathMatch: 'full'},
+  { path: 'home', component: HomeComponent },
   { path: 'auth', component: AuthenticationComponent },
   { path: 'admin', component: AdministratorComponent, canActivate: [AuthGuard] },
   { path: 'student', component: StudentComponent, canActivate: [AuthGuard] },
