@@ -105,7 +105,7 @@ pipeline {
                     echo "CERTS_PATH is: $CERTS_PATH"
                     echo "certs ls after"
                     ls -l certs
-                    echo "✅ All services started"
+                    echo "✅ All services started :)"
                 '''
             }
         }
