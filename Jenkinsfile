@@ -6,7 +6,9 @@ pipeline {
         COMPOSE_DOCKER_CLI_BUILD = '1'
         CERTS_PATH = "${env.WORKSPACE}"
     }
-    
+    triggers {
+        githubPush()
+    }
     stages {
         stage('Checkout') {
             steps {
